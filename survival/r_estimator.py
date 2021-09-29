@@ -9,8 +9,6 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri, r
 from sklearn.base import BaseEstimator
 
-from ..misc import execution
-
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
@@ -114,7 +112,6 @@ class LTRCTrees(REstimator):
 
         print(str_ + "troncature, age_mort, mort")
 
-    @execution.execution_time
     def fit(self, X: pd.DataFrame, y: pd.DataFrame):
         y_copy = y.copy()
         y_copy.columns = ["troncature", "age_mort", "mort"]
@@ -127,7 +124,6 @@ class LTRCTrees(REstimator):
         if self.save_locally:
             self.save()
 
-    @execution.execution_time
     def predict(self, X):
         if self.save_locally:
             self.load()
