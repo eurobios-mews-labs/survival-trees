@@ -1,7 +1,48 @@
 import numpy as np
+import pandas as pd
 
 from survival import r_estimator as re
-import pandas as pd
+
+
+def test_ltrc_2():
+    from lifelines import datasets
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder
+    from lifelines.utils import concordance_index
+    ohe = OneHotEncoder(sparse=False)
+    dataset = datasets.load_dd()
+    y_cols = ["start_year", "age", "observed"]
+    X = pd.DataFrame(dict(x1=np.random.uniform(size=1000),
+                          x2=np.random.uniform(size=1000)), index = range(1000))
+    y = pd.DataFrame(columns=y_cols, index=X.index)
+    y["age"] = X["x1"] * 10 + np.random.uniform(size=1000)
+    y['start_year'] = 0
+    y['observed'] = (y["age"] + np.random.uniform(size=1000)) > 6
+    y['observed'] = y['observed'].astype(int)
+    x_train, x_test, y_train, y_test = train_test_split(X, y)
+
+    model2 = re.RandomForestLTRC(n_estimator=30, n_features=x_train.shape[1])
+    model1 = re.LTRCTrees()
+
+    for i, model in enumerate([model1, model2]):
+        model.fit(x_train, y_train)
+
+        test = model.predict(x_test).astype(float)
+        # test.T.plot(legend=False, cmap="jet")
+
+        c_index = pd.Series(index=test.columns)
+        for date in c_index.index:
+            try:
+                c_index.loc[date] = concordance_index(
+                    date * np.ones(len(test)),
+                     test[date], y_test["observed"])
+            except:
+                pass
+
+        c_index.plot(label=str(i), legend=True)
+
+        self = model
+
 
 def test_ltrc():
     from lifelines import datasets
@@ -30,10 +71,11 @@ def test_ltrc():
     y = y[["start_year", "age", "observed"]]
     x_train, x_test, y_train, y_test = train_test_split(X, y)
 
-    model2 = re.RandomForestLTRC(n_estimator=1, n_features=x_train.shape[1])
+    model2 = re.RandomForestLTRC(n_estimator=100, n_features=x_train.shape[1],
+                                 bootstrap=False)
     model1 = re.LTRCTrees()
 
-    for model in [model1, ]:
+    for i, model in enumerate([model1, model2]):
         model.fit(x_train, y_train)
 
         test = model.predict(x_test).astype(float)
@@ -44,9 +86,10 @@ def test_ltrc():
             try:
                 c_index.loc[date] = concordance_index(
                     date * np.ones(len(test)),
-                    test[date], y_test["observed"])
+                     test[date], y_test["observed"])
             except:
                 pass
 
-        c_index.plot()
+        c_index.plot(label=str(i), legend=True)
+
     self = model2
