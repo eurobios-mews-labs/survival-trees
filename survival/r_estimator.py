@@ -57,14 +57,6 @@ class RandomForestSRC(REstimator):
         return res
 
 
-link_win = """
-"https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip"
-"""
-link_unix = """
-"https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz"
-"""
-
-
 class LTRCTrees(REstimator):
     def __init__(self, get_dense_prediction=True,
                  interpolate_prediction=True, save=True, hash=""):
@@ -211,7 +203,8 @@ class RandomForestLTRC:
             result[e] = self.base_estimator.predict(x_predict)
         return self.post_processing(result, X)
 
-    def post_processing(self, result, X):
+    @staticmethod
+    def post_processing(result, X):
         data_dense = {}
         corresp = {}
         columns = pd.Series()
@@ -228,8 +221,9 @@ class RandomForestLTRC:
                 list(np.sort(data_dense[e].columns))].astype(float)
             data_dense[e] = data_dense[e].interpolate(
                 method="linear", axis=1, limit_direction="forward")
+            data_dense[e] = data_dense[e].drop(columns=0)
 
-        res = pd.DataFrame(0, index=X.index, columns=(0, *all_times),
+        res = pd.DataFrame(0, index=X.index, columns=all_times,
                            dtype="float32")
         res_n_sum = res.copy().astype(int)
         for t in all_times:
@@ -242,7 +236,7 @@ class RandomForestLTRC:
                 x_index = ind == corresp[e].loc[:, "corresp"]
                 b = data_dense[e].index == ind
                 res.loc[x_index, data_dense[e].columns] += data_dense[e].loc[
-                    b]
+                    b].values
                 res_n_sum.loc[x_index, data_dense[e].columns] += 1
         res = res / res_n_sum
 

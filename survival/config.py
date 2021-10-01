@@ -1,0 +1,6 @@
+link_win = """
+"https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip"
+"""
+link_unix = """
+"https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz"
+"""
