@@ -1,14 +1,4 @@
 
-packages = c('survival', 'LTRCtrees', 'data.table')
-package.check <- lapply(
-  packages,
-  FUN = function(x) {
-    if (!require(x, character.only = TRUE)) {
-      install.packages(x, dependencies = TRUE)
-      library(x, character.only = TRUE)
-    }
-  }
-)
 
 Train <- read.csv({path}, sep = ",")
 

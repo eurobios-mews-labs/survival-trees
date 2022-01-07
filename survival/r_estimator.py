@@ -11,6 +11,8 @@ from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
 
+from survival.tools import execution
+
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
@@ -59,7 +61,7 @@ class REstimator(BaseEstimator):
         self.__test_name = "data.X"
         self._r_data_frame = pd.DataFrame()
 
-    def send_to_r_space(self, X, y=None):
+    def _send_to_r_space(self, X, y=None):
         if y is not None:
             name = self.__learn_name
             data = pd.concat((X, y), axis=1)
@@ -103,7 +105,7 @@ class RandomForestSRC(REstimator, ClassifierMixin):
                              "be a dataframe with two columns")
         duration = y.columns[0]
         event = y.columns[1]
-        self.send_to_r_space(X, y)
+        self._send_to_r_space(X, y)
         ro.r(f"""
         forest.obj <- randomForestSRC::rfsrc(
             Surv({duration}, {event}) ~ .,
@@ -114,7 +116,7 @@ class RandomForestSRC(REstimator, ClassifierMixin):
         self.feature_importances_ = self._get_from_r_space(["imp"])["imp"]
 
     def predict(self, X) -> pd.DataFrame:
-        self.send_to_r_space(X, y=None)
+        self._send_to_r_space(X, y=None)
         ro.r("predict.obj <- predict(forest.obj, data.X)")
         ro.r("res <- predict.obj$survival")
         ro.r("times <- predict.obj$time.interest")
@@ -125,46 +127,94 @@ class RandomForestSRC(REstimator, ClassifierMixin):
 
 
 class LTRCTrees(REstimator, ClassifierMixin):
-    def __init__(self, get_dense_prediction=True,
-                 interpolate_prediction=True, save=True, hash=""):
+    def __init__(
+            self, max_depth=None,
+            min_samples_leaf=None,
+            get_dense_prediction=True,
+            interpolate_prediction=True):
         super().__init__()
         install_if_needed(["survival", "LTRCtrees", "data.table",
-                           "rpart", "Icens", "interval"])
+                           "rpart", "Icens", "interval", 'stringi'])
         install_ltrc_trees()
         self._import_packages(["data.table", "LTRCtrees", "survival"])
-        self.dense = get_dense_prediction
-        self.interpolate = interpolate_prediction
-        self.save_locally = save
-        self.hash = hash
+        self.get_dense_prediction = get_dense_prediction
+        self.interpolate_prediction = interpolate_prediction
+        self.min_samples_leaf = min_samples_leaf
+        self.max_depth = max_depth
+        self.__hash = "5B6if95PiV6z2j"
 
         str_ = "The target variable must"
         str_ += "be dataframe with following column order \n"
 
         print(str_ + "troncature, age_mort, mort")
 
-    def fit(self, X: pd.DataFrame, y: pd.DataFrame):
+    @execution.execution_time
+    def _fit_old(self, X: pd.DataFrame, y: pd.DataFrame):
         y_copy = y.copy()
         y_copy.columns = ["troncature", "age_mort", "mort"]
-        X = X.join(y_copy)
-        X.to_csv(tmp + "/X", index=False)
+        x = X.join(y_copy)
+        x.to_csv(tmp + "/X", index=False)
         r_cmd = open(path + "/base_script.R").read()
         r_cmd = r_cmd.replace("{path}", "'" + tmp + "/X'")
         ro.r(r_cmd)
 
-        if self.save_locally:
-            self.save()
+    @execution.execution_time
+    def fit(self, X: pd.DataFrame, y: pd.DataFrame):
+        y_copy = y.copy()
+        y_copy.columns = ["troncature", "age_mort", "mort"]
+        self._send_to_r_space(X, y_copy)
+        r_cmd = open(path + "/base_script_n.R").read()
+        r_cmd = r_cmd % self.__param_r_setter()
+        ro.r(r_cmd)
+        self._id_run = ro.r("id.run")
+        print(ro.r("result.ltrc.tree[[id.run]]"))
 
-    def predict(self, X):
-        if self.save_locally:
-            self.load()
-        self.test_name = "test"
-        self.path_to_test = tmp + "/test" + self.hash
-        X.to_csv(self.path_to_test)
+    def __param_r_setter(self):
+        param = ""
+        if self.min_samples_leaf is not None:
+            param += "minbucket=%s, " % self.min_samples_leaf
+        if self.max_depth is not None:
+            param += "maxdepth=%s, " % self.max_depth
+        if param == "":
+            return ""
+        else:
+            return "control = rpart::rpart.control({param})".format(
+                param=param[:-2])
+
+    @execution.execution_time
+    def predict(self, X: pd.DataFrame) -> pd.DataFrame:
+        self._send_to_r_space(X)
+        ro.r(open(path + "/predict_n.R").read())
+        km_mat = pd.DataFrame(
+            columns=list(np.array(ro.r("time.stamp"))),
+            index=X.index, dtype="float32")
+
+        for k in list(ro.r("Keys")):
+            subset = np.where(np.array(ro.r("data.X$ID")) == k)[0]
+
+            curves = list(ro.r(
+                "result$KMcurves[[{index}]]$surv".format(index=subset[0] + 1)))
+            time = list(ro.r(
+                "result$KMcurves[[{index}]]$time".format(index=subset[0] + 1)))
+            km_mat.loc[km_mat.index[subset], np.array(time)] = curves
+        if not self.get_dense_prediction:
+            km_mat = km_mat.astype(pd.SparseDtype("float16", np.nan))
+        if self.interpolate_prediction:
+            km_mat = km_mat.T.fillna(method="pad").T
+        return km_mat
+
+    @execution.deprecated
+    @execution.execution_time
+    def _predict_old(self, X):
+        self.__load()
+        self.__test_name = "test"
+        self.__path_to_test = tmp + "/test" + self.__hash
+        X.to_csv(self.__path_to_test)
         r_cmd = open(path + "/predict.R").read()
-        r_cmd = r_cmd.replace("{path}", "'" + self.path_to_test + "'")
+        r_cmd = r_cmd.replace("{path}", "'" + self.__path_to_test + "'")
         ro.r(r_cmd)
         km_mat = pd.DataFrame(
-            columns=list(np.array(ro.r("time.stamp"), dtype=int)),
+            columns=list(np.array(ro.r("time.stamp"))),
             index=X.index, dtype="float32")
         for k in list(ro.r("Keys")):
             subset = np.where(np.array(ro.r("test$ID")) == k)[0]
@@ -172,71 +222,79 @@ class LTRCTrees(REstimator, ClassifierMixin):
                 "result$KMcurves[[{index}]]$surv".format(index=subset[0] + 1)))
             time = list(ro.r(
                 "result$KMcurves[[{index}]]$time".format(index=subset[0] + 1)))
-            km_mat.loc[km_mat.index[subset], np.array(time, dtype=int)] = curves
+            km_mat.loc[km_mat.index[subset], np.array(time)] = curves
 
-        if not self.dense:
+        if not self.get_dense_prediction:
             km_mat = km_mat.astype(pd.SparseDtype("float16", np.nan))
-        if self.interpolate:
+        if self.interpolate_prediction:
             km_mat = km_mat.T.fillna(method="pad").T
         return km_mat
 
-    def save(self):
+    @execution.deprecated
+    def __save(self):
         ro.r('\
-        saveRDS(rtree, file="{path}/{hash}rtree.Robject")\n\
-        saveRDS(Keys.MM, file="{path}/{hash}keysMM.Robject")\n\
-        saveRDS(List.KM, file="{path}/{hash}listKM.Robject")\n\
-        saveRDS(List.Med, file="{path}/{hash}listMed.Robject")\n\
-        '.format(path=tmp, hash=self.hash))
+            saveRDS(rtree, file="{path}/{hash}rtree.Robject")\n\
+            saveRDS(Keys.MM, file="{path}/{hash}keysMM.Robject")\n\
+            saveRDS(List.KM, file="{path}/{hash}listKM.Robject")\n\
+            saveRDS(List.Med, file="{path}/{hash}listMed.Robject")\n\
+            '.format(path=tmp, hash=self.__hash))
 
-    def load(self):
+    @execution.deprecated
+    def __load(self):
         ro.r('\
-        rtree <- readRDS(file="{path}/{hash}rtree.Robject")\n\
-        Keys.MM <- readRDS(file="{path}/{hash}keysMM.Robject")\n\
-        List.KM <- readRDS(file="{path}/{hash}listKM.Robject")\n\
-        List.Med <- readRDS(file="{path}/{hash}listMed.Robject")\n\
-        '.format(path=tmp, hash=self.hash))
+            rtree <- readRDS(file="{path}/{hash}rtree.Robject")\n\
+            Keys.MM <- readRDS(file="{path}/{hash}keysMM.Robject")\n\
+            List.KM <- readRDS(file="{path}/{hash}listKM.Robject")\n\
+            List.Med <- readRDS(file="{path}/{hash}listMed.Robject")\n\
+            '.format(path=tmp, hash=self.__hash))
 
 
-class RandomForestLTRC:
+class RandomForestLTRC(ClassifierMixin):
     def __init__(self,
-                 n_estimator=3, n_features=None,
-                 max_depth=None, bootstrap=True, bootstrap_factor=0.8):
+                 n_estimator=3, max_features=None,
+                 max_depth=None, bootstrap=True, max_samples=0.8,
+                 min_samples_leaf=None
+                 ):
         self.estimators = {}
         self.select_feature = {}
         self.base = LTRCTrees
         self.bootstrap = bootstrap
         self.n_estimator = n_estimator
-        self.bootstrap_factor = bootstrap_factor
-        self.base_estimator = {}
-        self.base_estimator = self.base(save=True, interpolate_prediction=False)
-        self.n_features = n_features
+        self.max_samples = max_samples
+        self.base_estimator = self.base(
+            interpolate_prediction=False,
+            max_depth=max_depth,
+            min_samples_leaf=min_samples_leaf
+        )
+        self.max_features = max_features
 
-    def fit(self, X, y):
+    @execution.execution_time
+    def fit(self, X: pd.DataFrame, y: pd.DataFrame):
         select_index = {}
         self.hashes = {}
-        self.n_features = int(
-            X.shape[1] / 3) if self.n_features is None else self.n_features
+        self.max_features = int(
+            X.shape[1] / 3) if self.max_features is None else self.max_features
         for e in range(self.n_estimator):
             x_train, y_train = X.__deepcopy__(), y.__deepcopy__()
             if self.bootstrap:
                 select_index[e] = np.random.choice(X.index, size=int(
-                    self.bootstrap_factor * X.shape[0]))
+                    self.max_samples * X.shape[0]))
                 x_train, y_train = x_train.loc[select_index[e]], y.loc[
                     select_index[e]]
 
             self.select_feature[e] = np.random.choice(
-                X.columns, size=int(self.n_features),
+                X.columns, size=int(self.max_features),
                 replace=False)
             x_train = x_train.loc[:, self.select_feature[e]]
 
             self.hashes[e] = str(e)
-            self.base_estimator.hash = self.hashes[e]
+            self.base_estimator.__hash = self.hashes[e]
             self.base_estimator.fit(x_train, y_train)
 
     def predict(self, X):
         result = {}
         for e in range(self.n_estimator):
-            self.base_estimator.hash = self.hashes[e]
+            self.base_estimator.__hash = self.hashes[e]
             x_predict = X.loc[:, self.select_feature[e]]
             result[e] = self.base_estimator.predict(x_predict)
         return self.post_processing(result, X)

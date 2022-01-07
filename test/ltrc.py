@@ -25,9 +25,9 @@ def test_ltrc_2():
     model1 = re.LTRCTrees()
 
     for i, model in enumerate([model1, model2]):
-        model.fit(x_train, y_train)
+        model._fit_old(x_train, y_train)
 
-        test = model.predict(x_test).astype(float)
+        test = model._predict_old(x_test).astype(float)
         # test.T.plot(legend=False, cmap="jet")
 
         c_index = pd.Series(index=test.columns)
@@ -76,9 +76,9 @@ def test_ltrc():
     model1 = re.LTRCTrees()
 
     for i, model in enumerate([model1, model2]):
-        model.fit(x_train, y_train)
+        model._fit_old(x_train, y_train)
 
-        test = model.predict(x_test).astype(float)
+        test = model._predict_old(x_test).astype(float)
         # test.T.plot(legend=False, cmap="jet")
 
         c_index = pd.Series(index=test.columns)
