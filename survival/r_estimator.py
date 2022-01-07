@@ -1,43 +1,96 @@
 import os
 import sys
 from pathlib import Path
+from typing import List
 
 import numpy as np
 import pandas as pd
 import rpy2.robjects as ro
 import rpy2.robjects.packages as rpackages
-from rpy2.robjects import pandas2ri, r
-from sklearn.base import BaseEstimator
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
+from sklearn.base import BaseEstimator, ClassifierMixin
 
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
 
 
+def install_if_needed(package_list: list):
+    if len(package_list) == 1:
+        package_list = f"('{package_list[0]}')"
+    else:
+        package_list = str(tuple(
+            package_list
+        ))
+    r_cmd = """
+            packages = c""" + package_list + """
+            package.check <- lapply(
+              packages,
+              FUN = function(x) {
+                if (!require(x, character.only = TRUE)) {
+                  install.packages(x, dependencies = TRUE)
+                  library(x, character.only = TRUE)
+                }
+              }
+            )"""
+    print(r_cmd)
+    ro.r(r_cmd)
+
+
+def install_ltrc_trees():
+    if "linux" in sys.platform:
+        r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
+                  install.packages("https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz")
+                }"""
+    else:
+        r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
+                  install.packages("https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip")
+                }"""
+
+    ro.r(r_cmd2)
+
+
 class REstimator(BaseEstimator):
     def __init__(self):
-        self.utils = rpackages.importr('utils')
-        self.utils.chooseCRANmirror(ind=1)
-        self.learn_name = "data.X"
-        self.test_name = "data.X"
+        self.__utils = rpackages.importr('utils')
+        self.__utils.chooseCRANmirror(ind=1)
+        self.__learn_name = "data.X"
+        self.__test_name = "data.X"
+        self._r_data_frame = pd.DataFrame()
 
-    def prepare(self, X, y=None):
+    def send_to_r_space(self, X, y=None):
         if y is not None:
-            name = self.learn_name
+            name = self.__learn_name
             data = pd.concat((X, y), axis=1)
         else:
-            name = self.test_name
+            name = self.__test_name
             data = X
-        pandas2ri.activate()
-        r_data_frame = pandas2ri.py2ri(data)
-        ro.globalenv[name] = r_data_frame
+        with localconverter(ro.default_converter + pandas2ri.converter):
+            self._r_data_frame = ro.conversion.py2rpy(data)
+        ro.globalenv[name] = self._r_data_frame
+
+    @staticmethod
+    def _import_packages(list_package: List[str]):
+        for package in list_package:
+            rpackages.importr(package)
+
+    @staticmethod
+    def _get_from_r_space(list_object: List[str]):
+        dict_result = {}
+        for o in list_object:
+            with localconverter(ro.default_converter + pandas2ri.converter):
+                dict_result[o] = ro.conversion.rpy2py(ro.globalenv[o])
+        return dict_result
 
 
-class RandomForestSRC(REstimator):
-    def __init__(self, **parameters):
+class RandomForestSRC(REstimator, ClassifierMixin):
+    def __init__(self, n_estimator=100):
         super().__init__()
+        self.n_estimator = n_estimator
         self.name = "randomForestSRC"
-        self.utils.install_packages(self.name)
+        install_if_needed([self.name])
+        self._import_packages(["randomForestSRC"])
 
     def fit(self, X, y: pd.DataFrame):
         """
@@ -45,55 +98,40 @@ class RandomForestSRC(REstimator):
         :param y: 2D data set (time and status)
         :return:
         """
-        self.prepare(X, y)
-        ro.r("""forest.obj <- randomForestSRC::rfsrc(Surv(duration, event) ~ ., 
-        data = data.X, ntree = 100, tree.err=TRUE)""")
+        if y.shape[1] != 2:
+            raise ValueError("Target data should "
+                             "be a dataframe with two columns")
+        duration = y.columns[0]
+        event = y.columns[1]
+        self.send_to_r_space(X, y)
+        ro.r(f"""
+        forest.obj <- randomForestSRC::rfsrc(
+            Surv({duration}, {event}) ~ .,
+            data = data.X, 
+            ntree = {self.n_estimator}, 
+            tree.err=TRUE)""")
+        ro.r("imp <- vimp(forest.obj)$importance")
+        self.feature_importances_ = self._get_from_r_space(["imp"])["imp"]
 
-    def predict(self, X):
-        self.prepare(X, y=None)
+    def predict(self, X) -> pd.DataFrame:
+        self.send_to_r_space(X, y=None)
         ro.r("predict.obj <- predict(forest.obj, data.X)")
         ro.r("res <- predict.obj$survival")
-        res = r["res"]
-        return res
+        ro.r("times <- predict.obj$time.interest")
+        getter = self._get_from_r_space(["res", "times"])
+        prediction = getter["res"]
+        times = getter["times"]
+        return pd.DataFrame(prediction, columns=times, index=X.index)
 
 
-class LTRCTrees(REstimator):
+class LTRCTrees(REstimator, ClassifierMixin):
     def __init__(self, get_dense_prediction=True,
                  interpolate_prediction=True, save=True, hash=""):
         super().__init__()
-        list_package = str((
-            "survival",
-            "LTRCtrees",
-            "data.table",
-            "rpart",
-            "Icens",
-            "interval"
-        ))
-        r_cmd = """
-        packages = c""" + list_package + """
-        package.check <- lapply(
-          packages,
-          FUN = function(x) {
-            if (!require(x, character.only = TRUE)) {
-              install.packages(x, dependencies = TRUE)
-              library(x, character.only = TRUE)
-            }
-          }
-        )"""
-        if "linux" in sys.platform:
-            r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
-                      install.packages("https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz")
-                    }"""
-        else:
-            r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
-                      install.packages("https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip")
-                    }"""
-
-        ro.r(r_cmd)
-        ro.r(r_cmd2)
-        rpackages.importr("data.table")
-        rpackages.importr("LTRCtrees")
-        rpackages.importr("survival")
+        install_if_needed(["survival", "LTRCtrees", "data.table",
+                           "rpart", "Icens", "interval"])
+        install_ltrc_trees()
+        self._import_packages(["data.table", "LTRCtrees", "survival"])
         self.dense = get_dense_prediction
         self.interpolate = interpolate_prediction
         self.save_locally = save
