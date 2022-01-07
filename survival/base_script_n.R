@@ -30,6 +30,6 @@ if (!exists("result.ltrc.trees")){
     result.ltrc.tree <- hash()
 }
 
-result.ltrc.tree[[id.run]] <- c(
+result.ltrc.tree[[id.run]] <- hash(
     id=ID, keys=Keys, km.curves=List.KM, median=List.Med, keys.mm=Keys.MM
 )

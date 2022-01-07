@@ -1,8 +1,6 @@
 # retrieve fit object (defined in base_script.R)
 
-# save actual run id
 
-ID <- result.ltrc.tree[[id.run]]$list.id
 List.KM <- result.ltrc.tree[[id.run]]$km.curves
 List.Med <- result.ltrc.tree[[id.run]]$median
 Keys.MM <- result.ltrc.tree[[id.run]]$keys.mm

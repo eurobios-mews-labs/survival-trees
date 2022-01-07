@@ -167,7 +167,7 @@ class LTRCTrees(REstimator, ClassifierMixin):
         r_cmd = r_cmd % self.__param_r_setter()
         ro.r(r_cmd)
         self._id_run = ro.r("id.run")
-        print(ro.r("result.ltrc.tree[[id.run]][['km.curves']]"))
+        print(ro.r("result.ltrc.tree[[id.run]]"))
 
     def __param_r_setter(self):
         param = ""
