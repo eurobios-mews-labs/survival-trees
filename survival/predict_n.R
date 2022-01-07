@@ -2,9 +2,10 @@
 
 # save actual run id
 
-ID <- result.ltrc.tree[[id.run]]$id
+ID <- result.ltrc.tree[[id.run]]$list.id
 List.KM <- result.ltrc.tree[[id.run]]$km.curves
 List.Med <- result.ltrc.tree[[id.run]]$median
+Keys.MM <- result.ltrc.tree[[id.run]]$keys.mm
 
 data.X$ID <- stats::predict(rtree, newdata = data.X, type = "vector")
 Test.ID <- match(data.X$ID, Keys.MM[, 1])

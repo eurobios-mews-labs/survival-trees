@@ -27,9 +27,9 @@ for (p in Keys) {
 }
 
 if (!exists("result.ltrc.trees")){
-    result.ltrc.tree <- list()
+    result.ltrc.tree <- hash()
 }
 
 result.ltrc.tree[[id.run]] <- c(
-    id=ID, keys=Keys, km.curves=List.KM, median=List.Med
+    id=ID, keys=Keys, km.curves=List.KM, median=List.Med, keys.mm=Keys.MM
 )

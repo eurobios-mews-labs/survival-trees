@@ -134,9 +134,9 @@ class LTRCTrees(REstimator, ClassifierMixin):
             interpolate_prediction=True):
         super().__init__()
         install_if_needed(["survival", "LTRCtrees", "data.table",
-                           "rpart", "Icens", "interval", 'stringi'])
+                           "rpart", "Icens", "interval", 'stringi', "hash"])
         install_ltrc_trees()
-        self._import_packages(["data.table", "LTRCtrees", "survival"])
+        self._import_packages(["data.table", "LTRCtrees", "survival", 'hash'])
         self.get_dense_prediction = get_dense_prediction
         self.interpolate_prediction = interpolate_prediction
         self.min_samples_leaf = min_samples_leaf
@@ -167,7 +167,7 @@ class LTRCTrees(REstimator, ClassifierMixin):
         r_cmd = r_cmd % self.__param_r_setter()
         ro.r(r_cmd)
         self._id_run = ro.r("id.run")
-        print(ro.r("result.ltrc.tree[[id.run]]"))
+        print(ro.r("result.ltrc.tree[[id.run]][['km.curves']]"))
 
     def __param_r_setter(self):
         param = ""
@@ -185,6 +185,7 @@ class LTRCTrees(REstimator, ClassifierMixin):
     def predict(self, X: pd.DataFrame) -> pd.DataFrame:
         self._send_to_r_space(X)
         ro.r(open(path + "/predict_n.R").read())
+        print(ro.r["time.stamp"])
         km_mat = pd.DataFrame(
             columns=list(np.array(ro.r("time.stamp"))),
             index=X.index, dtype="float32")
