@@ -10,19 +10,17 @@ from survival import r_estimator
 def get_data():
     from lifelines import datasets
     from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import OneHotEncoder
-    n = 200
-    ohe = OneHotEncoder(sparse=False)
-    dataset = datasets.load_dd()
+    n = 300
     y_cols = ["start_year", "age", "observed"]
     X = pd.DataFrame(dict(x1=np.random.uniform(size=n),
                           x2=np.random.uniform(size=n)), index=range(n))
     y = pd.DataFrame(columns=y_cols, index=X.index)
     y["age"] = X["x1"] * 10 + np.random.uniform(size=n)
     y['start_year'] = 0
-    y['observed'] = (y["age"] + np.random.uniform(size=n)) > 6
+    y['observed'] = (y["age"] + np.random.uniform(size=n) + X["x2"]) > 6
     y['observed'] = y['observed'].astype(int)
     x_train, x_test, y_train, y_test = train_test_split(X, y)
+    print(y)
     return x_train, x_test, y_train, y_test
 
 
@@ -56,9 +54,49 @@ def test_ltrc_trees(get_data):
 
 def test_ltrc_trees_n(get_data):
     x_train, x_test, y_train, y_test = get_data
-    est = r_estimator.LTRCTrees(max_depth=4, min_samples_leaf=2)
+
+    est = r_estimator.LTRCTrees(
+        get_dense_prediction=False,
+        interpolate_prediction=True)
     est.fit(x_train, y_train)
     test = est.predict(x_test)
+    test[0] = 1
+    test = test[np.sort(test.columns)]
+    test = test.fillna(method="pad")
+    c_index = pd.Series(index=test.columns)
+    print(test)
+    for date in c_index.index:
+        try:
+            c_index.loc[date] = concordance_index(
+                date * np.ones(len(test)),
+                test[date], y_test["observed"])
+        except:
+            pass
+    print(c_index.mean())
+    assert c_index.mean() > 0.5
+
+
+def test_ltrc_trees_predict_curves(get_data):
+    x_train, x_test, y_train, y_test = get_data
+
+    est = r_estimator.LTRCTrees()
+    est.fit(x_train, y_train)
+    curves, indexes = est.predict_curves(x_test)
+    print(curves)
+    print(curves.drop_duplicates())
+    print(indexes)
+
+
+def test_rf_ltrc(get_data):
+    x_train, x_test, y_train, y_test = get_data
+    est = r_estimator.RandomForestLTRC(
+         n_estimator=3)
+    est.fit(x_train, y_train)
+    test = est.predict(x_test)
+
+    test[0] = 1
+    test = test[np.sort(test.columns)]
+    test = test.fillna(method="pad")
     c_index = pd.Series(index=test.columns)
 
     for date in c_index.index:
@@ -68,13 +106,30 @@ def test_ltrc_trees_n(get_data):
                 test[date], y_test["observed"])
         except:
             pass
-    assert c_index.mean() > 0.8
+    print(c_index.mean())
+    assert c_index.mean() > 0.5
 
 
-def test_rf_ltrc(get_data):
+def test_rf_ltrc_fast(get_data):
     x_train, x_test, y_train, y_test = get_data
-    est = r_estimator.RandomForestLTRC(max_features=2,
-                                       max_depth=4, min_samples_leaf=2)
+    est = r_estimator.RandomForestLTRC(n_estimator=30,
+                                       max_features=2,
+                                       bootstrap=False
+                                       )
+
     est.fit(x_train, y_train)
     test = est.predict(x_test)
-
+    test[0] = 1
+    test = test[np.sort(test.columns)]
+    test = test.fillna(method="pad")
+    c_index = pd.Series(index=test.columns)
+    print(test, x_test)
+    for date in c_index.index:
+        try:
+            c_index.loc[date] = concordance_index(
+                date * np.ones(len(test)),
+                test[date], y_test["observed"])
+        except:
+            pass
+    print(c_index.mean())
+    assert c_index.mean() > 0.6

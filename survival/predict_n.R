@@ -4,6 +4,7 @@
 List.KM <- result.ltrc.tree[[id.run]]$km.curves
 List.Med <- result.ltrc.tree[[id.run]]$median
 Keys.MM <- result.ltrc.tree[[id.run]]$keys.mm
+rtree <- result.ltrc.tree[[id.run]]$tree
 
 data.X$ID <- stats::predict(rtree, newdata = data.X, type = "vector")
 Test.ID <- match(data.X$ID, Keys.MM[, 1])
