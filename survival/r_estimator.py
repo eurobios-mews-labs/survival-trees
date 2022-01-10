@@ -323,21 +323,21 @@ class RandomForestLTRC(ClassifierMixin):
         return X, y
 
     def predict(self, X, return_type="dense"):
-        self.fast_predict(X)
+        self.fast_predict_(X)
         if return_type == "dense":
             return pd.merge(self.nodes_, self.km_estimates_,
                             left_on="curve_index",
                             right_index=True).set_index("x_index").drop(
                 columns=["curve_index"]).loc[X.index]
 
-    def fast_predict(self, X: pd.DataFrame) -> pd.DataFrame:
+    def fast_predict_(self, X: pd.DataFrame) -> None:
         result = {}
         for e in range(self.n_estimator):
             x_predict = X.loc[:, self.__select_feature[e]]
             self.base_estimator.results_ = self.results_[e]
             self.base_estimator._id_run = self.__hashes[e]
             result[e] = self.base_estimator.predict_curves(x_predict)
-        self.km_estimates_, self.nodes_ = self.post_processing_fast(result, X)
+        self.km_estimates_, self.nodes_ = self.__post_processing_fast(result, X)
 
     def _predict_old(self, X):
         result = {}
@@ -346,10 +346,10 @@ class RandomForestLTRC(ClassifierMixin):
             self.base_estimator.results_ = self.results_[e]
             self.base_estimator._id_run = self.__hashes[e]
             result[e] = self.base_estimator.predict(x_predict)
-        return self.post_processing(result, X)
+        return self.__post_processing(result, X)
 
     @staticmethod
-    def post_processing_fast(result, X):
+    def __post_processing_fast(result, X):
         nodes = pd.DataFrame(False, index=X.index, columns=result.keys())
         all_times = [result[e][0].columns for e in result.keys()]
         all_times = np.unique(np.sort(np.concatenate(all_times)))
@@ -390,7 +390,7 @@ class RandomForestLTRC(ClassifierMixin):
         return unique_curves, nodes
 
     @staticmethod
-    def post_processing(result, X):
+    def __post_processing(result, X):
         data_dense = {}
         corresp = {}
         columns = pd.Series()

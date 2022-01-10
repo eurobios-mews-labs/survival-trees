@@ -131,5 +131,6 @@ def test_rf_ltrc_fast(get_data):
                 test[date], y_test["observed"])
         except:
             pass
+    est.
     print(c_index.mean())
     assert c_index.mean() > 0.6
