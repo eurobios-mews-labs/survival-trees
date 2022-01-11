@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 from typing import List
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -10,8 +11,6 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
-
-from survival.tools import execution
 
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")
@@ -128,6 +127,69 @@ class RandomForestSRC(REstimator, ClassifierMixin):
 
 
 class LTRCTrees(REstimator, ClassifierMixin):
+    """
+    A left truncated right censored trees regressor.
+
+    Based on rpart algorithm from R, and LTRC R package.
+    This algorithm evaluates Kaplan Meier estimate.
+
+    Parameters
+    ----------
+
+    max_depth : int, default=None
+        The maximum depth of the tree. If None, then nodes are expanded until
+        all leaves are pure (no death) or until all leaves contain less than
+        min_samples_leaf samples.
+
+    min_samples_leaf : int or float, default=1
+        The minimum number of samples required to be at a leaf node.
+        A split point at any depth will only be considered if it leaves at
+        least ``min_samples_leaf`` training samples in each of the left and
+        right branches.  This may have the effect of smoothing the model,
+        especially in regression.
+
+        - If int, then consider `min_samples_leaf` as the minimum number.
+        - If float, then `min_samples_leaf` is a fraction and
+          `ceil(min_samples_leaf * n_samples)` are the minimum
+          number of samples for each node.
+
+    Attributes
+    ----------
+
+    feature_importances_ : ndarray of shape (n_features,)
+        The impurity-based feature importances.
+        The higher, the more important the feature.
+        The importance of a feature is computed as the (normalized)
+        total reduction of the criterion brought by that feature.  It is also
+        known as the Gini importance.
+
+        Warning: impurity-based feature importances can be misleading for
+        high cardinality features (many unique values). See
+        :func:`sklearn.inspection.permutation_importance` as an alternative.
+
+
+    See Also
+    --------
+
+    Notes
+    -----
+    The default values for the parameters controlling the size of the trees
+    (e.g. ``max_depth``, ``min_samples_leaf``, etc.) lead to fully grown and
+    unpruned trees which can potentially be very large on some data sets. To
+    reduce memory consumption, the complexity and size of the trees should be
+    controlled by setting those parameter values.
+
+    References
+    ----------
+    .. [1] LTRC Trees `manual`_
+    .. [2] Rpart algorithm
+
+    Examples
+    --------
+
+    .. _manual: https://cran.r-project.org/web/packages/LTRCtrees/LTRCtrees.pdf
+    """
+
     def __init__(
             self, max_depth=None,
             min_samples_leaf=None,
@@ -144,21 +206,8 @@ class LTRCTrees(REstimator, ClassifierMixin):
         self.max_depth = max_depth
         self.__hash = "id.run"
 
-        str_ = "The target variable must"
-        str_ += "be dataframe with following column order \n"
-
-        print(str_ + "troncature, age_mort, mort")
-
-    def _fit_old(self, X: pd.DataFrame, y: pd.DataFrame):
-        y_copy = y.copy()
-        y_copy.columns = ["troncature", "age_mort", "mort"]
-        x = X.join(y_copy)
-        x.to_csv(tmp + "/X", index=False)
-        r_cmd = open(path + "/base_script.R").read()
-        r_cmd = r_cmd.replace("{path}", "'" + tmp + "/X'")
-        r_session(r_cmd)
-
     def fit(self, X: pd.DataFrame, y: pd.DataFrame):
+        _validate_y(y)
         y_copy = y.copy()
         y_copy.columns = ["troncature", "age_mort", "mort"]
         self._send_to_r_space(X, y_copy)
@@ -167,6 +216,9 @@ class LTRCTrees(REstimator, ClassifierMixin):
         r_session(r_cmd)
         self._id_run = str(self._get_from_r_space(["id.run"])["id.run"][0])
         self.results_ = r_session("result.ltrc.tree")
+        self.feature_importances_ = list(ro.r("var.importance"))
+        self.feature_importances_ = [c / sum(self.feature_importances_)
+                                     for c in self.feature_importances_]
         ro.r("gc()")
 
     def __param_r_setter(self):
@@ -228,90 +280,190 @@ class LTRCTrees(REstimator, ClassifierMixin):
             indexes.iloc[subset] = i
         return curves, indexes
 
-    @execution.deprecated
-    @execution.execution_time
-    def _predict_old(self, X):
-        self.__load()
-        self.__test_name = "test"
-        self.__path_to_test = tmp + "/test" + self.__hash
-        X.to_csv(self.__path_to_test)
-        r_cmd = open(path + "/predict.R").read()
-        r_cmd = r_cmd.replace("{path}", "'" + self.__path_to_test + "'")
-        r_session(r_cmd)
-        km_mat = pd.DataFrame(
-            columns=list(np.array(r_session("time.stamp"))),
-            index=X.index, dtype="float32")
-        for k in list(r_session("Keys")):
-            subset = np.where(np.array(r_session("test$ID")) == k)[0]
-            curves = list(r_session(
-                "result$KMcurves[[{index}]]$surv".format(index=subset[0] + 1)))
-            time = list(r_session(
-                "result$KMcurves[[{index}]]$time".format(index=subset[0] + 1)))
-            km_mat.loc[km_mat.index[subset], np.array(time)] = curves
-
-        if not self.get_dense_prediction:
-            km_mat = km_mat.astype(pd.SparseDtype("float16", np.nan))
-        if self.interpolate_prediction:
-            km_mat = km_mat.T.fillna(method="pad").T
-        return km_mat
-
-    @execution.deprecated
-    def __save(self):
-        r_session('\
-            saveRDS(rtree, file="{path}/{hash}rtree.Robject")\n\
-            saveRDS(Keys.MM, file="{path}/{hash}keysMM.Robject")\n\
-            saveRDS(List.KM, file="{path}/{hash}listKM.Robject")\n\
-            saveRDS(List.Med, file="{path}/{hash}listMed.Robject")\n\
-            '.format(path=tmp, hash=self.__hash))
-
-    @execution.deprecated
-    def __load(self):
-        r_session('\
-            rtree <- readRDS(file="{path}/{hash}rtree.Robject")\n\
-            Keys.MM <- readRDS(file="{path}/{hash}keysMM.Robject")\n\
-            List.KM <- readRDS(file="{path}/{hash}listKM.Robject")\n\
-            List.Med <- readRDS(file="{path}/{hash}listMed.Robject")\n\
-            '.format(path=tmp, hash=self.__hash))
-
 
 class RandomForestLTRC(ClassifierMixin):
+    """
+        A left truncated right censored survival random forest regressor.
+        LeTRiCS-RF
+
+        This is a meta estimator that fits a number of LTRC trees
+        in order to improve the prediction by averging several surival function
+
+        The sub-sample size is controlled with the `max_samples` parameter if
+        `bootstrap=True` (default), otherwise the whole dataset is used to build
+        each tree.
+
+        Parameters
+        ----------
+        n_estimators : int, default=3
+            The number of trees in the forest.
+
+        max_depth : int, default=None
+            The maximum depth of the tree. If None, then nodes are expanded until
+            all leaves are pure or until all leaves contain less than
+            min_samples_split samples.
+
+        min_samples_leaf : int or float, default=1
+            The minimum number of samples required to be at a leaf node.
+            A split point at any depth will only be considered if it leaves at
+            least ``min_samples_leaf`` training samples in each of the left and
+            right branches.  This may have the effect of smoothing the model,
+            especially in regression.
+
+            - If int, then consider `min_samples_leaf` as the minimum number.
+            - If float, then `min_samples_leaf` is a fraction and
+              `ceil(min_samples_leaf * n_samples)` are the minimum
+              number of samples for each node.
+
+
+        max_features : int or float, default="auto"
+            The number of features to consider when looking for the best split:
+
+            - If int, then consider `max_features` features at each split.
+            - If float, then `max_features` is a fraction and
+              `round(max_features * n_features)` features are considered at each
+              split.
+            - If None, then `max_features=n_features//3`.
+
+        bootstrap : bool, default=True
+            Whether bootstrap samples are used when building trees. If False,
+            the  whole dataset is used to build each tree.
+
+        max_samples : float, default=None
+            If bootstrap is True, the number of samples to draw from X
+            to train each base estimator.
+
+            - If None (default), then draw `X.shape[0]` samples.
+            - If float, then draw `max_samples * X.shape[0]` samples. Thus,
+              `max_samples` should be in the interval `(0.0, 1.0]`.
+
+        Attributes
+        ----------
+        base_estimator_ : LTRCTrees
+            The child estimator template used to create the collection of fitted
+            sub-estimators.
+
+        n_features_in_ : int
+            Number of features seen during :term:`fit`.
+
+        feature_names_in_ : ndarray of shape (`n_features_in_`,)
+            Names of features seen during :term:`fit`. Defined only when `X`
+            has feature names that are all strings.
+
+        feature_importances_ : ndarray of shape (n_features,)
+            The impurity-based feature importances.
+            The higher, the more important the feature.
+            The importance of a feature is computed as the (normalized)
+            total reduction of the criterion brought by that feature.  It is also
+            known as the Gini importance.
+
+            Warning: impurity-based feature importances can be misleading for
+            high cardinality features (many unique values). See
+            :func:`sklearn.inspection.permutation_importance` as an alternative.
+
+
+
+        Notes
+        -----
+        The default values for the parameters controlling the size of the trees
+        (e.g. ``max_depth``, ``min_samples_leaf``, etc.) lead to fully grown and
+        unpruned trees which can potentially be very large on some data sets. To
+        reduce memory consumption, the complexity and size of the trees should be
+        controlled by setting those parameter values.
+
+        The features are always randomly permuted at each split. Therefore,
+        the best found split may vary, even with the same training data,
+        ``max_features=n_features`` and ``bootstrap=False``, if the improvement
+        of the criterion is identical for several splits enumerated during the
+        search of the best split. To obtain a deterministic behaviour during
+        fitting, ``random_state`` has to be fixed.
+
+        References
+        ----------
+
+        Examples
+        --------
+        """
+
     def __init__(self,
-                 n_estimator=3, max_features=None,
-                 max_depth=None, bootstrap=True, max_samples=1,
-                 min_samples_leaf=None, base_estimator=LTRCTrees,
+                 n_estimators: int = 3,
+                 max_features: Union[float, int] = None,
+                 max_depth: float = None,
+                 bootstrap: bool = True,
+                 max_samples: float = 1,
+                 min_samples_leaf: int = None,
+                 base_estimator: LTRCTrees = None,
                  ):
         self.__select_feature = {}
-        self.base_estimator = base_estimator
         self.bootstrap = bootstrap
-        self.n_estimator = n_estimator
+        self.n_estimator = n_estimators
         self.max_samples = max_samples
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
-        self.base_estimator = self.base_estimator(
-            interpolate_prediction=False,
-            max_depth=self.max_depth,
-            min_samples_leaf=self.min_samples_leaf
-        )
         self.max_features = max_features
+        if base_estimator is None:
+            self.base_estimator_ = LTRCTrees(
+                interpolate_prediction=False,
+                max_depth=self.max_depth,
+                min_samples_leaf=self.min_samples_leaf
+            )
+        else:
+            self.base_estimator_ = base_estimator
 
     def fit(self, X: pd.DataFrame, y: pd.DataFrame):
+        """
 
+        Parameters
+        ----------
+        X: pandas DataFrame
+            Input data
+        y: pandas DataFrame
+            Target. For survival analysis in presence of right censored and left
+            truncated data, the target must have three columns
+
+            - first column : the truncation or entry points. The date at which
+              data start to be seen (numeric)
+            - second column : the age of death or truncation (numeric)
+            - third column : a boolean stating id the event occurred (boolean)
+
+        Returns
+        -------
+
+        """
+        _validate_y(y)
         self.__hashes = {}
         self.results_ = {}
-        self.max_features = int(
-            X.shape[1] / 3) if self.max_features is None else self.max_features
-        self.max_features = max(2, self.max_features)
-        self.max_features = min(X.shape[1], self.max_features)
+        self.__var_imp = pd.DataFrame(index=range(self.n_estimator),
+                                      columns=X.columns)
+        self.__max_feature(X.columns.to_list())
         for e in range(self.n_estimator):
             x_train, y_train = self.__bootstrap(X, y)
             self.__select_feature[e] = np.random.choice(
-                X.columns, size=int(self.max_features),
+                X.columns, size=int(self.__m_features),
                 replace=False)
             x_train = x_train.loc[:, self.__select_feature[e]]
-            self.base_estimator.fit(x_train, y_train)
-            self.results_[e] = self.base_estimator.results_
-            self.__hashes[e] = self.base_estimator._get_from_r_space([
+            self.base_estimator_.fit(x_train, y_train)
+            self.results_[e] = self.base_estimator_.results_
+            self.__hashes[e] = self.base_estimator_._get_from_r_space([
                 "id.run"])["id.run"][0]
+            self.__var_imp.loc[
+                e, self.__select_feature[e]
+            ] = self.base_estimator_.feature_importances_
+        self.feature_importances_ = list(self.__var_imp.mean(axis=0).values)
+        self.n_features_in_ = X.shape[1]
+        self.feature_names_in_ = X.columns.to_list()
+
+    def __max_feature(self, features: iter):
+        self.__m_features = self.max_features
+
+        if isinstance(self.max_features, float):
+            self.__m_features = int(
+                np.round(self.__m_features * len(features), 0))
+        if self.max_features is None:
+            self.__m_features = int(
+                len(features) / 3)
+        self.__m_features = max(2, self.__m_features)
+        self.__m_features = min(len(features), self.__m_features)
 
     def __bootstrap(self, X: pd.DataFrame, y: pd.DataFrame):
         if self.bootstrap:
@@ -322,31 +474,25 @@ class RandomForestLTRC(ClassifierMixin):
             return x_train, y_train
         return X, y
 
-    def predict(self, X, return_type="dense"):
+    def predict(self, X: pd.DataFrame, return_type="dense"
+                ) -> Union[pd.DataFrame, None]:
         self.fast_predict_(X)
         if return_type == "dense":
             return pd.merge(self.nodes_, self.km_estimates_,
                             left_on="curve_index",
                             right_index=True).set_index("x_index").drop(
                 columns=["curve_index"]).loc[X.index]
+        raise ValueError(f"return_type : {return_type} is not "
+                         f"implemented yet")
 
     def fast_predict_(self, X: pd.DataFrame) -> None:
         result = {}
         for e in range(self.n_estimator):
             x_predict = X.loc[:, self.__select_feature[e]]
-            self.base_estimator.results_ = self.results_[e]
-            self.base_estimator._id_run = self.__hashes[e]
-            result[e] = self.base_estimator.predict_curves(x_predict)
+            self.base_estimator_.results_ = self.results_[e]
+            self.base_estimator_._id_run = self.__hashes[e]
+            result[e] = self.base_estimator_.predict_curves(x_predict)
         self.km_estimates_, self.nodes_ = self.__post_processing_fast(result, X)
-
-    def _predict_old(self, X):
-        result = {}
-        for e in range(self.n_estimator):
-            x_predict = X.loc[:, self.__select_feature[e]]
-            self.base_estimator.results_ = self.results_[e]
-            self.base_estimator._id_run = self.__hashes[e]
-            result[e] = self.base_estimator.predict(x_predict)
-        return self.__post_processing(result, X)
 
     @staticmethod
     def __post_processing_fast(result, X):
@@ -389,52 +535,18 @@ class RandomForestLTRC(ClassifierMixin):
         nodes.columns = ["x_index", "curve_index"]
         return unique_curves, nodes
 
-    @staticmethod
-    def __post_processing(result, X):
-        data_dense = {}
-        corresp = {}
-        columns = pd.Series()
-        all_times = np.unique(np.concatenate(
-            [np.array(result[e].columns) for e in result.keys()]))
-        for e in result.keys():
-            corresp[e] = mat_corresp(result[e])
-            index = corresp[e]["corresp"].unique()
-            data_dense[e] = pd.DataFrame(columns=all_times, index=index)
-            data_dense[e][result[e].columns] = result[e].loc[index].astype(
-                float)
-            data_dense[e][0] = 1
-            data_dense[e] = data_dense[e][
-                list(np.sort(data_dense[e].columns))].astype(float)
-            data_dense[e] = data_dense[e].interpolate(
-                method="linear", axis=1, limit_direction="forward")
-            data_dense[e] = data_dense[e].drop(columns=0)
 
-        res = pd.DataFrame(0, index=X.index, columns=all_times,
-                           dtype="float32")
-        res_n_sum = res.copy().astype(int)
-        for t in all_times:
-            columns.loc[t] = np.sum(
-                [1 for e in result.keys() if t in data_dense[e].columns])
-        columns.loc[0] = len(result.keys()) * 1000
-        for e in result.keys():
-            inds = np.unique(corresp[e].loc[:, "corresp"])
-            for ind in inds:
-                x_index = ind == corresp[e].loc[:, "corresp"]
-                b = data_dense[e].index == ind
-                res.loc[x_index, data_dense[e].columns] += data_dense[e].loc[
-                    b].values
-                res_n_sum.loc[x_index, data_dense[e].columns] += 1
-        res = res / res_n_sum
-        return res
-
-
-def mat_corresp(data):
-    data = data.sort_values(list(np.sort(data.columns)))[
-        list(np.sort(data.columns))]
-    data_u = data.drop_duplicates()
-    id = pd.DataFrame(index=data.index)
-    id["corresp"] = np.nan
-    id.loc[data_u.index, "corresp"] = data_u.index
-    id = id.loc[data.index]
-    id = id.fillna(method="pad")
-    return id
+def _validate_y(y: pd.DataFrame):
+    from pandas.api.types import is_numeric_dtype
+    assert y.shape[1] == 3, "Target data must be a data frame" \
+                            "with 3 columns : truncation, age of death " \
+                            "and death"
+    assert is_numeric_dtype(y[y.columns[0]]), "The first column of target" \
+                                              " (truncation) should be " \
+                                              " numeric"
+    assert is_numeric_dtype(y[y.columns[1]]), "The second column of" \
+                                              " target (age of death) " \
+                                              "should be numeric"
+    assert len(np.unique(y[y.columns[2]])) == 2, "The third column of " \
+                                                 "target (death) " \
+                                                 "should be boolean"

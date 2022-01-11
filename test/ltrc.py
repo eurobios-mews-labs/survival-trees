@@ -21,7 +21,7 @@ def test_ltrc_2():
     y['observed'] = y['observed'].astype(int)
     x_train, x_test, y_train, y_test = train_test_split(X, y)
 
-    model2 = re.RandomForestLTRC(n_estimator=30, n_features=x_train.shape[1])
+    model2 = re.RandomForestLTRC(n_estimators=30, n_features=x_train.shape[1])
     model1 = re.LTRCTrees()
 
     for i, model in enumerate([model1, model2]):
@@ -71,7 +71,7 @@ def test_ltrc():
     y = y[["start_year", "age", "observed"]]
     x_train, x_test, y_train, y_test = train_test_split(X, y)
 
-    model2 = re.RandomForestLTRC(n_estimator=100, n_features=x_train.shape[1],
+    model2 = re.RandomForestLTRC(n_estimators=100, n_features=x_train.shape[1],
                                  bootstrap=False)
     model1 = re.LTRCTrees()
 
