@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from survival import r_estimator as re
+from survival_trees import _base as re
 
 
 def test_ltrc_2():

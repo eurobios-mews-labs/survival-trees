@@ -1,7 +1,7 @@
-survival
-========
+survival_trees
+==============
 
 .. toctree::
    :maxdepth: 4
 
-   survival
+   survival_trees

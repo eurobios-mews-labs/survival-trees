@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../../'))
-sys.path.insert(0, os.path.abspath('../../survival'))
+sys.path.insert(0, os.path.abspath('../../survival_trees'))
 
 # -- Project information -----------------------------------------------------
 
