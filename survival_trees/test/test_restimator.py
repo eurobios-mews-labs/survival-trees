@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 from lifelines.utils import concordance_index
 
-from survival import LTRCTrees, RandomForestSRC, RandomForestLTRC
-from survival import _base
+from survival_trees import LTRCTrees, RandomForestSRC, RandomForestLTRC
+from survival_trees import _base
 
 
 @pytest.fixture(scope="module")

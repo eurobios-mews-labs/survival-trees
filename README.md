@@ -7,13 +7,9 @@ To install the package you can run
 
     python -m pip install git+https://gitlab.eurobios.com/vlaurent/survival-trees
 
-
-
-
 ## Requirements
 
-
-
+Having `R` compiler installed
 
 ##Authors
 

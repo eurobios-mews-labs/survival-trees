@@ -9,7 +9,7 @@ def parse_requirements(filename):
 
 install_req = parse_requirements("requirements.txt")
 
-setup(name='survival-trees',
+setup(name='survival_trees',
       version='0.0.2',
       description='Python survival trees',
       url='https://gitlab.eurobios.com/vlaurent/survival-trees',
@@ -17,7 +17,7 @@ setup(name='survival-trees',
       author_email='vlaurent@eurobios.com',
       license='BSD',
       install_requires=install_req,
-      packages=['survival'],
+      packages=['survival_trees'],
       package_dir={'survival': 'survival'},
       include_package_data=True,
       package_data={'survival': ['*.R']},
