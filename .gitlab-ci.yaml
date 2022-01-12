@@ -5,7 +5,6 @@ pages:
   script:
     - make -C doc/ html
     - mv doc/build/html public
-    - mv doc/build/html public
   artifacts:
     paths:
     - public
