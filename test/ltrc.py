@@ -21,13 +21,13 @@ def test_ltrc_2():
     y['observed'] = y['observed'].astype(int)
     x_train, x_test, y_train, y_test = train_test_split(X, y)
 
-    model2 = re.RandomForestLTRC(n_estimators=30, n_features=x_train.shape[1])
+    model2 = re.RandomForestLTRC(n_estimators=30, max_features=x_train.shape[1])
     model1 = re.LTRCTrees()
 
     for i, model in enumerate([model1, model2]):
-        model._fit_old(x_train, y_train)
+        model.fit(x_train, y_train)
 
-        test = model._predict_old(x_test).astype(float)
+        test = model.predict(x_test).astype(float)
         # test.T.plot(legend=False, cmap="jet")
 
         c_index = pd.Series(index=test.columns)

@@ -11,6 +11,7 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
+from tools import execution
 
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")
@@ -196,10 +197,13 @@ class LTRCTrees(REstimator, ClassifierMixin):
             get_dense_prediction=True,
             interpolate_prediction=True):
         super().__init__()
-        install_if_needed(["survival", "LTRCtrees", "data.table",
-                           "rpart", "Icens", "interval", 'stringi', "hash"])
-        install_ltrc_trees()
-        self._import_packages(["data.table", "LTRCtrees", "survival", 'hash'])
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            install_if_needed(["survival", "LTRCtrees", "data.table",
+                               "rpart", "Icens", "interval", 'stringi', "hash"])
+            install_ltrc_trees()
+            self._import_packages(["data.table", "LTRCtrees", "survival", 'hash'])
         self.get_dense_prediction = get_dense_prediction
         self.interpolate_prediction = interpolate_prediction
         self.min_samples_leaf = min_samples_leaf
@@ -216,10 +220,22 @@ class LTRCTrees(REstimator, ClassifierMixin):
         r_session(r_cmd)
         self._id_run = str(self._get_from_r_space(["id.run"])["id.run"][0])
         self.results_ = r_session("result.ltrc.tree")
-        self.feature_importances_ = list(ro.r("var.importance"))
-        self.feature_importances_ = [c / sum(self.feature_importances_)
-                                     for c in self.feature_importances_]
+        self.__get_feature_importances(X.columns.to_list())
         ro.r("gc()")
+
+    def __get_feature_importances(self, features: iter):
+        try:
+            importance = pd.Series(
+                list(ro.r("var.importance")),
+                index=list(ro.r("names(var.importance)"))
+            )
+            importance = importance.reindex(features).fillna(0)
+            self.feature_importances_ = [importance.loc[i] for i in
+                                         importance.index]
+            self.feature_importances_ = [c / sum(self.feature_importances_)
+                                         for c in self.feature_importances_]
+        except TypeError:
+            self.feature_importances_ = [np.nan for _ in features]
 
     def __param_r_setter(self):
         param = ""
@@ -258,7 +274,10 @@ class LTRCTrees(REstimator, ClassifierMixin):
         if not self.get_dense_prediction:
             km_mat = km_mat.astype(pd.SparseDtype("float16", np.nan))
         if self.interpolate_prediction:
-            km_mat = km_mat.T.fillna(method="pad").T
+            km_mat[0] = 1
+            km_mat = km_mat[np.sort(km_mat.columns)]
+            km_mat = km_mat.astype("float32").T.fillna(method="pad").T
+
         ro.r("gc()")
         return km_mat
 
@@ -446,6 +465,7 @@ class RandomForestLTRC(ClassifierMixin):
             self.results_[e] = self.base_estimator_.results_
             self.__hashes[e] = self.base_estimator_._get_from_r_space([
                 "id.run"])["id.run"][0]
+
             self.__var_imp.loc[
                 e, self.__select_feature[e]
             ] = self.base_estimator_.feature_importances_

@@ -34,4 +34,8 @@ result.ltrc.tree[[id.run]] <- hash(
     id=ID, keys=Keys, km.curves=List.KM, median=List.Med, keys.mm=Keys.MM,
     tree=rtree
 )
+
+if (exists("var.importance")){
+    var.importance <- NULL
+}
 var.importance <- rtree$variable.importance
