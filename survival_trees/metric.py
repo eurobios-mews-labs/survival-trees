@@ -42,14 +42,14 @@ def time_dependent_roc(
         def marker(t_):
             return temporal_score[t_]
 
-    elif method == "roc":
+    elif method == "roc-cd":
         def outcome(t_):
-            return (t_ > censoring_time) & death
+            return (censoring_time <= t_) & death
 
         def marker(t_):
             return temporal_score[t_]
 
-    elif method == "incidence-roc":
+    elif method == "roc-id":
         def outcome(t_):
             return (t_ > censoring_time) & death
 
@@ -59,8 +59,11 @@ def time_dependent_roc(
         raise ValueError(f"method : {method} is not known")
 
     for t in tdr.index:
-        tdr.loc[t] = sk_metrics.roc_auc_score(
-            y_true=outcome(t),
-            y_score=marker(t)
-        )
+        try:
+            tdr.loc[t] = sk_metrics.roc_auc_score(
+                y_true=outcome(t),
+                y_score=marker(t)
+            )
+        except ValueError:
+            pass
     return tdr

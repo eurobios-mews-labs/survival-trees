@@ -43,7 +43,7 @@ def test_metrics():
     model = RandomForestLTRC(max_features=2, n_estimators=30,
                              min_samples_leaf=4)
     model.fit(x_train, y_train)
-    for method in ["harrell", "roc", "incidence-roc"]:
+    for method in ["harrell", "roc-cd"]:
         test = model.predict(x_test).astype(float)
         tdr = time_dependent_roc(test, death=y_test["death"],
                                  censoring_time=y_test["time"],

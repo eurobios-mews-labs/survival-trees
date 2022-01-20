@@ -63,13 +63,19 @@ def execution_time(method):
 
 @contextmanager
 def silence_stdout():
-    new_target = open(os.devnull, "w")
-    old_target = sys.stdout
-    sys.stdout = new_target
+    stdout_stream = open(os.devnull, "w")
+    stderr_stream = open(os.devnull, "w")
+
+    old_target_std_out = sys.stdout
+    old_target_std_err = sys.stderr
+
+    sys.stdout = stdout_stream
+    sys.stderr = stderr_stream
     try:
-        yield new_target
+        yield stdout_stream, stderr_stream
     finally:
-        sys.stdout = old_target
+        sys.stdout = old_target_std_out
+        sys.stderr = old_target_std_err
 
 
 def deprecated(func):

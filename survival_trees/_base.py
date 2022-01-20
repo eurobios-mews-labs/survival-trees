@@ -55,9 +55,15 @@ def install_ltrc_trees():
 
 
 class REstimator(BaseEstimator):
+
     def __init__(self):
+        from rpy2.rinterface_lib.embedded import RRuntimeError
         self.__utils = rpackages.importr('utils')
-        self.__utils.chooseCRANmirror(ind=1)
+        ro.r("sink('/dev/null')")
+        try:
+            self.__utils.chooseCRANmirror(ind=1)
+        except RRuntimeError:
+            pass
         self.__learn_name = "data.X"
         self.__test_name = "data.X"
         self._r_data_frame = pd.DataFrame()
@@ -76,7 +82,8 @@ class REstimator(BaseEstimator):
     @staticmethod
     def _import_packages(list_package: List[str]):
         for package in list_package:
-            rpackages.importr(package)
+            with execution.silence_stdout():
+                rpackages.importr(package)
 
     @staticmethod
     def _get_from_r_space(list_object: List[str]):
