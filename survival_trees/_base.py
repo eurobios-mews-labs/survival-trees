@@ -11,7 +11,7 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
-from tools import execution
+from .tools import execution
 
 tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
 tmp = os.fspath(tmp).replace("\\", "/")

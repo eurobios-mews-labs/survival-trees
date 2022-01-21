@@ -1,4 +1,4 @@
-from _base import LTRCTrees, RandomForestLTRC, RandomForestSRC
+from ._base import LTRCTrees, RandomForestLTRC, RandomForestSRC
 
 __all__ = [
     "LTRCTrees",

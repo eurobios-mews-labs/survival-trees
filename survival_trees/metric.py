@@ -2,6 +2,7 @@
 https://medium.com/analytics-vidhya/concordance-index-72298c11eac7
 https://anaqol.org/ea4275/js2012/3-Combescure.pdf?PHPSESSID=9fe65030a58af33d1370d7ccff343fa4
 """
+import numpy as np
 import pandas as pd
 from lifelines import utils
 from sklearn import metrics as sk_metrics
@@ -33,6 +34,11 @@ def time_dependent_roc(
         censoring_time=iter,
         method="harrell"
 ):
+    """
+    method
+        - roc-cd : Cumulative sensitivity and dynamic specificity (C/D)
+        - roc-id : Incident sensitivity and dynamic specificity (I/D)
+    """
     tdr = pd.Series(index=temporal_score.columns)
 
     if method == "harrell":
@@ -51,7 +57,8 @@ def time_dependent_roc(
 
     elif method == "roc-id":
         def outcome(t_):
-            return (t_ > censoring_time) & death
+            out = np.where(censoring_time < t_, np.nan, censoring_time)
+            return (t_ == out) & death
 
         def marker(t_):
             return temporal_score[t_]
