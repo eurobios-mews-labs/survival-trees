@@ -10,15 +10,17 @@ def parse_requirements(filename):
 install_req = parse_requirements("requirements.txt")
 
 setup(name='survival_trees',
-      version='0.0.4',
+      version='0.0.5',
       description='Python survival trees',
       url='https://gitlab.eurobios.com/vlaurent/survival-trees',
       author='Vincent LAURENT',
       author_email='vlaurent@eurobios.com',
       license='BSD',
       install_requires=install_req,
-      packages=['survival_trees'],
-      package_dir={'survival': 'survival'},
+      packages=['survival_trees', 'survival_trees.tools'],
+      package_dir={'pypgsql': 'survival_trees',
+                   'survival_trees.tools': 'survival_trees/tools',
+                   },
       include_package_data=True,
       package_data={'survival': ['*.R']},
       zip_safe=False)
