@@ -7,7 +7,7 @@ from lifelines import datasets
 from lifelines.plotting import plot_lifetimes
 from sklearn.model_selection import train_test_split
 
-from survival_trees import LTRCTrees, RandomForestLTRC
+from survival_trees import LTRCTrees, RandomForestLTRCFitter
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_roc
 
@@ -50,22 +50,25 @@ def load_datasets():
 
 def benchmark():
     all_datasets = load_datasets()
-    models = (RandomForestLTRC(max_features=2, n_estimators=50,
+    models = (RandomForestLTRCFitter(max_features=2, n_estimators=50,
                                min_samples_leaf=4, max_samples=0.8),
-              LTRCTrees(min_samples_leaf=4),
               coxph_fitter.SemiParametricPHFitter())
-
     results = pd.DataFrame(index=all_datasets.keys(), columns=models)
     for k, (X, y) in all_datasets.items():
         x_train, x_test, y_train, y_test = train_test_split(
             X, y, train_size=0.8)
         for i, model in enumerate(models):
-            model.fit(x_train, y_train)
+            model.fit(
+                pd.concat((x_train, y_train), axis=1),
+                entry_col=y_train.columns[0],
+                duration_col=y_train.columns[1],
+                event_col=y_train.columns[2]
+            )
             test = model.predict(x_test).astype(float)
             c_index = concordance_index(
                 test, death=y_test.iloc[:, 2],
                 censoring_time=y_test.iloc[:, 1])
-            results.loc[k, model] = c_index.mean()
+            results.loc[k, model] = np.nanmean(c_index)
 
 
 def test_larynx():

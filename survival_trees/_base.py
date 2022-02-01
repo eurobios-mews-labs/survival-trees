@@ -13,8 +13,6 @@ from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
 from .tools import execution
 
-tmp = "/tmp/" if "linux" in sys.platform else Path(os.environ["TEMP"])
-tmp = os.fspath(tmp).replace("\\", "/")
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
 
 r_session = ro.r
