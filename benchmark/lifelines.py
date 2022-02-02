@@ -1,19 +1,16 @@
-import matplotlib
 #
 import matplotlib.pyplot as plot
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from lifelines import datasets
+from lifelines.fitters import coxph_fitter, log_logistic_aft_fitter
 from lifelines.plotting import plot_lifetimes
 from sklearn.model_selection import train_test_split
 
-from survival_trees import LTRCTrees, RandomForestLTRCFitter
+from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, LTRCTreesFitter
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_roc
-
-from lifelines.fitters import coxph_fitter
-
-matplotlib.use('agg')
 
 
 def load_datasets():
@@ -45,30 +42,52 @@ def load_datasets():
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
     datasets_dict["rossi"] = X, y
+    # ==========================================================================
+    data = datasets.load_gbsg2()
+    data["entry_date"] = 0
+    y = data[["entry_date", "time", "cens"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["gbsg2"] = X, y
+    # ==========================================================================
     return datasets_dict
 
 
 def benchmark():
     all_datasets = load_datasets()
-    models = (RandomForestLTRCFitter(max_features=2, n_estimators=50,
-                               min_samples_leaf=4, max_samples=0.8),
-              coxph_fitter.SemiParametricPHFitter())
-    results = pd.DataFrame(index=all_datasets.keys(), columns=models)
+    models = {
+        "ltrc-forest": RandomForestLTRCFitter(
+            n_estimators=20,
+            min_samples_leaf=3,
+            max_samples=0.8),
+        "ltrc_trees": LTRCTreesFitter(),
+        "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(),
+        "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(),
+    }
+    results = pd.DataFrame(index=all_datasets.keys(), columns=models.keys())
+
     for k, (X, y) in all_datasets.items():
         x_train, x_test, y_train, y_test = train_test_split(
-            X, y, train_size=0.8)
-        for i, model in enumerate(models):
-            model.fit(
-                pd.concat((x_train, y_train), axis=1),
+            X, y, train_size=0.6)
+        for i, key in enumerate(models.keys()):
+            models[key].fit(
+                pd.concat((x_train, y_train), axis=1).dropna(),
                 entry_col=y_train.columns[0],
                 duration_col=y_train.columns[1],
                 event_col=y_train.columns[2]
             )
-            test = model.predict(x_test).astype(float)
+            test = 1 - models[key].predict_cumulative_hazard(
+                x_test).astype(float).T
+            test = test.dropna()
             c_index = concordance_index(
-                test, death=y_test.iloc[:, 2],
-                censoring_time=y_test.iloc[:, 1])
-            results.loc[k, model] = np.nanmean(c_index)
+                test, death=y_test.loc[test.index].iloc[:, 2],
+                censoring_time=y_test.loc[test.index].iloc[:, 1])
+            results.loc[k, key] = np.nanmean(c_index)
+    print(results)
+    f, ax = plot.subplots(figsize=(9, 6))
+    sns.heatmap(results.astype(float), annot=True, linewidths=2, ax=ax,
+                vmin=0.5, vmax=0.9)
+    plot.savefig("./public/benchmark.png")
 
 
 def test_larynx():

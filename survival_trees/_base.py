@@ -479,14 +479,18 @@ class RandomForestLTRC(ClassifierMixin):
         self.feature_names_in_ = X.columns.to_list()
 
     def __max_feature(self, features: iter):
-        self.__m_features = self.max_features
 
         if isinstance(self.max_features, float):
             self.__m_features = int(
                 np.round(self.__m_features * len(features), 0))
-        if self.max_features is None:
-            self.__m_features = int(
-                len(features) / 3)
+        elif self.max_features is None:
+            self.__m_features = len(features)
+
+        elif self.max_features == "auto":
+            self.__m_features = len(features) // 3
+        else:
+            self.__m_features = self.max_features
+
         self.__m_features = max(2, self.__m_features)
         self.__m_features = min(len(features), self.__m_features)
 

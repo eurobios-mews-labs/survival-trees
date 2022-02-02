@@ -1,15 +1,10 @@
-import os
 from typing import Union
 
 import pandas as pd
-import rpy2.robjects as ro
 
 from survival_trees import LTRCTrees
+from survival_trees import LTRCTrees as LTRCT
 from survival_trees import RandomForestLTRC as RF
-
-path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
-
-r_session = ro.r
 
 
 class RandomForestLTRC(RF):
@@ -157,3 +152,46 @@ class RandomForestLTRC(RF):
         X = data.drop(columns=[entry_col, duration_col, event_col])
         y = data[[entry_col, duration_col, event_col]]
         return super().fit(X, y)
+
+    def predict_cumulative_hazard(self, X: pd.DataFrame, return_type="dense"
+                                  ) -> Union[pd.DataFrame, None]:
+        return 1 - self.predict(X, return_type).T
+
+
+class LTRCTrees(LTRCT):
+    def __init__(self,
+                 max_depth: int = None,
+                 min_samples_leaf: int = None
+                 ):
+        super().__init__(max_depth,
+                         min_samples_leaf,
+                         )
+
+    def fit(self, data: pd.DataFrame, duration_col: str,
+            event_col: str, entry_col: str):
+        """
+
+        Parameters
+        ----------
+        data: pandas DataFrame
+            Input data
+        duration_col: string
+            the name of the column in DataFrame that contains the subjects'
+            lifetimes.
+        event_col: string
+            the  name of the column in DataFrame that contains the subjects' death
+            observation. If left as None, assume all individuals are uncensored.
+        entry_col: string
+            the  name of the column in DataFrame that contains the subjects'
+            entry time.
+        Returns
+        -------
+
+        """
+        X = data.drop(columns=[entry_col, duration_col, event_col])
+        y = data[[entry_col, duration_col, event_col]]
+        return super().fit(X, y)
+
+    def predict_cumulative_hazard(self, X: pd.DataFrame,
+                                  ) -> Union[pd.DataFrame, None]:
+        return 1 - self.predict(X).T
