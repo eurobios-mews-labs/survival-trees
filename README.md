@@ -6,12 +6,11 @@
 
 
 **Splitting method -- log rank test**
-	Denote $`D_i, L_i, \delta_i`$ respectively the survival/censored time, the left truncation time and the event indicator, then for each instance $i$ its contribution to the logrank test score is
 
+Denote $`D_i, L_i, \delta_i`$ respectively the survival/censored time, the left truncation time and the event indicator, then for each instance $`i`$ its contribution to the logrank test score is
 
-
-		- $`U_i &= 1 + \log(R_i) - \log(L_i)`$ if  $`\delta_i = 1`$  and
-		- $`U_i &= \log(R_i) - \log(L_i)` $   if $`\delta_i = 0`$
+- $`U_i &= 1 + \log(R_i) - \log(L_i)`$ if  $`\delta_i = 1`$  and
+- $`U_i &= \log(R_i) - \log(L_i)` $   if $`\delta_i = 0`$
 
 
 **Extension to LTRC - forest**
