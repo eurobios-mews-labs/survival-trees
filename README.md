@@ -23,6 +23,9 @@ Denote $`D_i, L_i, \delta_i`$ respectively the survival/censored time, the left 
 
 
 
+## Benchmark
+
+![benchmark](public/benchmark.png)
 
 ## Install notice
 
