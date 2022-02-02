@@ -11,7 +11,7 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
-from .tools import execution
+from survival_trees.tools import execution
 
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
 
