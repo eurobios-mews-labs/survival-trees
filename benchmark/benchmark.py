@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, LTRCTreesFitter
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_roc
+from benchmark import synthetic
 
 
 def load_datasets():
@@ -50,6 +51,13 @@ def load_datasets():
     X = X.select_dtypes(include=np.number)
     datasets_dict["gbsg2"] = X, y
     # ==========================================================================
+    data = pd.concat((synthetic.X.astype(int), synthetic.Y, synthetic.L,
+                      synthetic.R), axis=1)
+    y = data[["left_truncation", "right_censoring",  "target"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["mcGough_2021"] = X, y
+
     return datasets_dict
 
 
@@ -70,23 +78,28 @@ def benchmark():
         x_train, x_test, y_train, y_test = train_test_split(
             X, y, train_size=0.6)
         for i, key in enumerate(models.keys()):
-            models[key].fit(
-                pd.concat((x_train, y_train), axis=1).dropna(),
-                entry_col=y_train.columns[0],
-                duration_col=y_train.columns[1],
-                event_col=y_train.columns[2]
-            )
-            test = 1 - models[key].predict_cumulative_hazard(
-                x_test).astype(float).T
-            test = test.dropna()
-            c_index = concordance_index(
-                test, death=y_test.loc[test.index].iloc[:, 2],
-                censoring_time=y_test.loc[test.index].iloc[:, 1])
-            results.loc[k, key] = np.nanmean(c_index)
+            try:
+                models[key].fit(
+                    pd.concat((x_train, y_train), axis=1).dropna(),
+                    entry_col=y_train.columns[0],
+                    duration_col=y_train.columns[1],
+                    event_col=y_train.columns[2]
+                )
+                test = 1 - models[key].predict_cumulative_hazard(
+                    x_test).astype(float).T
+                test = test.dropna()
+                c_index = concordance_index(
+                    test, death=y_test.loc[test.index].iloc[:, 2],
+                    censoring_time=y_test.loc[test.index].iloc[:, 1])
+                results.loc[k, key] = np.nanmean(c_index)
+            except Exception:
+                pass
+
     print(results)
     f, ax = plot.subplots(figsize=(9, 6))
     sns.heatmap(results.astype(float), annot=True, linewidths=2, ax=ax,
-                vmin=0.5, vmax=0.9)
+                # vmin=0.5, vmax=0.9,
+                cmap="RdBu")
     plot.savefig("./public/benchmark.png")
 
 
