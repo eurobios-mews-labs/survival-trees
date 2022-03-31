@@ -157,3 +157,7 @@ def test_metrics():
                            time_event=y_test["time"],
                            add_marker=False)
     plot.savefig("benchmark/curves.png", dpi=200)
+
+
+if __name__ == '__main__':
+    benchmark()
