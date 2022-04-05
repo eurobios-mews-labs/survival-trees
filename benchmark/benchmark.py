@@ -109,7 +109,7 @@ def benchmark(n_exp=2):
                 vmin=0.5,
                 # vmax=0.9,
                 cmap="RdBu")
-    plot.savefig("./public/benchmark.png")
+    # plot.savefig("./public/benchmark.png")
 
 
 def test_larynx():
@@ -165,8 +165,8 @@ def test_metrics():
     plotting.tagged_curves(temporal_curves=test, label=y_test["death"],
                            time_event=y_test["time"],
                            add_marker=False)
-    plot.savefig("benchmark/curves.png", dpi=200)
+    # plot.savefig("benchmark/curves.png", dpi=200)
 
 
 if __name__ == '__main__':
-    benchmark(n_exp=10)
+    benchmark(n_exp=1)
