@@ -8,6 +8,7 @@ from lifelines.fitters import coxph_fitter, log_logistic_aft_fitter
 from lifelines.plotting import plot_lifetimes
 from sklearn.model_selection import train_test_split
 
+from benchmark import synthetic
 from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, LTRCTreesFitter
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_roc
@@ -50,10 +51,17 @@ def load_datasets():
     X = X.select_dtypes(include=np.number)
     datasets_dict["gbsg2"] = X, y
     # ==========================================================================
+    data = pd.concat((synthetic.X.astype(int), synthetic.Y, synthetic.L,
+                      synthetic.R), axis=1)
+    y = data[["left_truncation", "right_censoring", "target"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["mcGough_2021"] = X, y
+
     return datasets_dict
 
 
-def benchmark():
+def benchmark(n_exp=2):
     all_datasets = load_datasets()
     models = {
         "ltrc-forest": RandomForestLTRCFitter(
@@ -62,32 +70,46 @@ def benchmark():
             max_samples=0.8),
         "ltrc_trees": LTRCTreesFitter(),
         "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(),
-        "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(),
+        "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(penalizer=0.1),
     }
-    results = pd.DataFrame(index=all_datasets.keys(), columns=models.keys())
+    results = {}
+    for j in range(n_exp):
+        results[j] = pd.DataFrame(index=all_datasets.keys(), columns=models.keys())
+        for k, (X, y) in all_datasets.items():
+            x_train, x_test, y_train, y_test = train_test_split(
+                X, y, train_size=0.6)
+            for i, key in enumerate(models.keys()):
 
-    for k, (X, y) in all_datasets.items():
-        x_train, x_test, y_train, y_test = train_test_split(
-            X, y, train_size=0.6)
-        for i, key in enumerate(models.keys()):
-            models[key].fit(
-                pd.concat((x_train, y_train), axis=1).dropna(),
-                entry_col=y_train.columns[0],
-                duration_col=y_train.columns[1],
-                event_col=y_train.columns[2]
-            )
-            test = 1 - models[key].predict_cumulative_hazard(
-                x_test).astype(float).T
-            test = test.dropna()
-            c_index = concordance_index(
-                test, death=y_test.loc[test.index].iloc[:, 2],
-                censoring_time=y_test.loc[test.index].iloc[:, 1])
-            results.loc[k, key] = np.nanmean(c_index)
-    print(results)
+                try:
+                    models[key].fit(
+                        pd.concat((x_train, y_train), axis=1).dropna(),
+                        entry_col=y_train.columns[0],
+                        duration_col=y_train.columns[1],
+                        event_col=y_train.columns[2]
+                    )
+                    test = 1 - models[key].predict_cumulative_hazard(
+                        x_test).astype(float).T
+                    test = test.dropna()
+                    c_index = concordance_index(
+                        test, death=y_test.loc[test.index].iloc[:, 2],
+                        censoring_time=y_test.loc[test.index].iloc[:, 1])
+                    results[j].loc[k, key] = np.nanmean(c_index)
+                except Exception:
+                    pass
+    all_res = pd.DataFrame()
+    for res in results.keys():
+        results[res]["num_expe"] = res
+        all_res = pd.concat((results[res].astype(float), all_res), axis=0)
+    all_res.index.name = "dataset"
+    mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
+    std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
+
     f, ax = plot.subplots(figsize=(9, 6))
-    sns.heatmap(results.astype(float), annot=True, linewidths=2, ax=ax,
-                vmin=0.5, vmax=0.9)
-    plot.savefig("./public/benchmark.png")
+    sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
+                vmin=0.5,
+                # vmax=0.9,
+                cmap="RdBu")
+    # plot.savefig("./public/benchmark.png")
 
 
 def test_larynx():
@@ -143,4 +165,8 @@ def test_metrics():
     plotting.tagged_curves(temporal_curves=test, label=y_test["death"],
                            time_event=y_test["time"],
                            add_marker=False)
-    plot.savefig("benchmark/curves.png", dpi=200)
+    # plot.savefig("benchmark/curves.png", dpi=200)
+
+
+if __name__ == '__main__':
+    benchmark(n_exp=1)

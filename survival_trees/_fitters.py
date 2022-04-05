@@ -2,7 +2,6 @@ from typing import Union
 
 import pandas as pd
 
-from survival_trees import LTRCTrees
 from survival_trees import LTRCTrees as LTRCT
 from survival_trees import RandomForestLTRC as RF
 
@@ -118,7 +117,7 @@ class RandomForestLTRC(RF):
                  bootstrap: bool = True,
                  max_samples: float = 1,
                  min_samples_leaf: int = None,
-                 base_estimator: LTRCTrees = None,
+                 base_estimator: "LTRCTrees" = None,
                  ):
         super().__init__(n_estimators,
                          max_features,

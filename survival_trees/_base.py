@@ -521,10 +521,10 @@ class RandomForestLTRC(ClassifierMixin):
             self.base_estimator_.results_ = self.results_[e]
             self.base_estimator_._id_run = self.__hashes[e]
             result[e] = self.base_estimator_.predict_curves(x_predict)
-        self.km_estimates_, self.nodes_ = self.__post_processing_fast(result, X)
+        self.km_estimates_, self.nodes_ = self.__post_processing(result, X)
 
     @staticmethod
-    def __post_processing_fast(result, X):
+    def __post_processing(result, X):
         nodes = pd.DataFrame(False, index=X.index, columns=result.keys())
         all_times = [result[e][0].columns for e in result.keys()]
         all_times = np.unique(np.sort(np.concatenate(all_times)))
