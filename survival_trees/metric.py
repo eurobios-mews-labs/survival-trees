@@ -30,9 +30,9 @@ def mean_concordance_index(temporal_score: pd.DataFrame, death: iter,
 def time_dependent_helper(
         temporal_score:pd.DataFrame,
         death:iter,
-	censoring_time=iter,
-	function:Callable,
-	method:str="harrel,
+	censoring_time:iter,
+	function:callable,
+	method:str="harrel",
 	
 ):
     result = {}
