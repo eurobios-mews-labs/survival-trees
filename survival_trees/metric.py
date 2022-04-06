@@ -111,9 +111,15 @@ def time_dependent_roc(
 
     for t in tdr.index:
         try:
+            y_true = np.array(outcome(t))
+            y_score = np.array(marker(t))
+
+            nan_ = np.isnan(y_true)
+            nan_ |= np.isnan(y_score)
+
             tdr.loc[t] = sk_metrics.roc_auc_score(
-                y_true=outcome(t),
-                y_score=marker(t)
+                y_true=y_true[~nan_],
+                y_score=y_score[~nan_]
             )
         except ValueError:
             pass
