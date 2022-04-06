@@ -70,8 +70,8 @@ def time_dependent_roc(
             y_true = np.array(outcome(t))
             y_score = np.array(marker(t))
 
-            nan_ = np.isna(y_true)
-            nan_ |= np.isna(y_score)
+            nan_ = np.isnan(y_true)
+            nan_ |= np.isnan(y_score)
 
             tdr.loc[t] = sk_metrics.roc_auc_score(
                 y_true=y_true[~nan_],
