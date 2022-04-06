@@ -27,13 +27,14 @@ def mean_concordance_index(temporal_score: pd.DataFrame, death: iter,
     return concordance_index(temporal_score, death,
                              censoring_time).mean()
 
+
 def time_dependent_helper(
-        temporal_score:pd.DataFrame,
-        death:iter,
-	censoring_time:iter,
-	function:callable,
-	method:str="harrel",
-	
+        temporal_score: pd.DataFrame,
+        death: iter,
+        censoring_time: iter,
+        function: callable,
+        method: str = "harrell",
+
 ):
     result = {}
 
@@ -63,6 +64,12 @@ def time_dependent_helper(
 
     for t in temporal_score.columns:
         try:
+            y_true = np.array(outcome(t))
+            y_score = np.array(marker(t))
+
+            nan_ = np.isnan(y_true)
+            nan_ |= np.isnan(y_score)
+
             result[t] = function(
                 y_true=outcome(t),
                 y_score=marker(t)
@@ -72,7 +79,7 @@ def time_dependent_helper(
     return result
 
 
-def time_dependent_roc(
+def time_dependent_auc(
         temporal_score: pd.DataFrame,
         death: iter,
         censoring_time=iter,
@@ -83,44 +90,10 @@ def time_dependent_roc(
         - roc-cd : Cumulative sensitivity and dynamic specificity (C/D)
         - roc-id : Incident sensitivity and dynamic specificity (I/D)
     """
-    tdr = pd.Series(index=temporal_score.columns)
-
-    if method == "harrell":
-        def outcome(_):
-            return death
-
-        def marker(t_):
-            return temporal_score[t_]
-
-    elif method == "roc-cd":
-        def outcome(t_):
-            return (censoring_time <= t_) & death
-
-        def marker(t_):
-            return temporal_score[t_]
-
-    elif method == "roc-id":
-        def outcome(t_):
-            out = np.where(censoring_time < t_, np.nan, censoring_time)
-            return (t_ == out) & death
-
-        def marker(t_):
-            return temporal_score[t_]
-    else:
-        raise ValueError(f"method : {method} is not known")
-
-    for t in tdr.index:
-        try:
-            y_true = np.array(outcome(t))
-            y_score = np.array(marker(t))
-
-            nan_ = np.isnan(y_true)
-            nan_ |= np.isnan(y_score)
-
-            tdr.loc[t] = sk_metrics.roc_auc_score(
-                y_true=y_true[~nan_],
-                y_score=y_score[~nan_]
-            )
-        except ValueError:
-            pass
-    return tdr
+    result = time_dependent_helper(
+        temporal_score,
+        death,
+        censoring_time,
+        sk_metrics.roc_auc_score,
+        method)
+    return pd.DataFrame(result)
