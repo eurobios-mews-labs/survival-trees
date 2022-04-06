@@ -27,6 +27,50 @@ def mean_concordance_index(temporal_score: pd.DataFrame, death: iter,
     return concordance_index(temporal_score, death,
                              censoring_time).mean()
 
+def time_dependent_helper(
+        temporal_score:pd.DataFrame,
+        death:iter,
+	censoring_time=iter,
+	function:Callable,
+	method:str="harrel,
+	
+):
+    result = {}
+
+    if method == "harrell":
+        def outcome(_):
+            return death
+
+        def marker(t_):
+            return temporal_score[t_]
+
+    elif method == "roc-cd":
+        def outcome(t_):
+            return (censoring_time <= t_) & death
+
+        def marker(t_):
+            return temporal_score[t_]
+
+    elif method == "roc-id":
+        def outcome(t_):
+            out = np.where(censoring_time < t_, np.nan, censoring_time)
+            return (t_ == out) & death
+
+        def marker(t_):
+            return temporal_score[t_]
+    else:
+        raise ValueError(f"method : {method} is not known")
+
+    for t in temporal_score.columns:
+        try:
+            result[t] = function(
+                y_true=outcome(t),
+                y_score=marker(t)
+            )
+        except ValueError:
+            pass
+    return result
+
 
 def time_dependent_roc(
         temporal_score: pd.DataFrame,
