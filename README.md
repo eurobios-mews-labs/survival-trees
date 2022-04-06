@@ -46,7 +46,7 @@ Having `R` compiler installed
 
 ## Project
 
-This implementation come from an SNCF DTIPG project and is developped and maintained by Eurobios Scientific Computation Branch
+This implementation come from an SNCF DTIPG project and is developped and maintained by Eurobios Scientific Computation Branch and SNCF Innovation & Recherche
 
 <img src="https://www.startpage.com/av/proxy-image?piurl=https%3A%2F%2Fencrypted-tbn0.gstatic.com%2Fimages%3Fq%3Dtbn%3AANd9GcQi-hXNsyumecBbKpKK9YZcqXtSK9OLfAKCgx9WDlKi00WW8JKw%26s&sp=1649249923Td554cdd4435d0f6a7eecbaa09d9b67e14ce96e06eb0e754fb87d16a04ea914a3" alt="drawing" width="100"/>
 
