@@ -1,0 +1,4 @@
+lifelines
+rpy2
+memory_profiler
+sklearn
