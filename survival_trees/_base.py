@@ -18,40 +18,6 @@ path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
 r_session = ro.r
 
 
-def install_if_needed(package_list: list):
-    if len(package_list) == 1:
-        package_list = f"('{package_list[0]}')"
-    else:
-        package_list = str(tuple(
-            package_list
-        ))
-    r_cmd = """
-            packages = c""" + package_list + """
-            package.check <- lapply(
-              packages,
-              FUN = function(x) {
-                if (!require(x, character.only = TRUE)) {
-                  install.packages(x, dependencies = TRUE)
-                  library(x, character.only = TRUE)
-                }
-              }
-            )"""
-    r_session(r_cmd)
-
-
-def install_ltrc_trees():
-    if "linux" in sys.platform:
-        r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
-                  install.packages("https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz")
-                }"""
-    else:
-        r_cmd2 = """if (!require("LTRCtrees", character.only = TRUE)) {
-                  install.packages("https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip")
-                }"""
-
-    r_session(r_cmd2)
-
-
 class REstimator(BaseEstimator):
 
     def __init__(self):
@@ -205,9 +171,6 @@ class LTRCTrees(REstimator, ClassifierMixin):
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            install_if_needed(["survival", "LTRCtrees", "data.table",
-                               "rpart", "Icens", "interval", 'stringi', "hash"])
-            install_ltrc_trees()
             self._import_packages(["data.table", "LTRCtrees", "survival", 'hash'])
         self.get_dense_prediction = get_dense_prediction
         self.interpolate_prediction = interpolate_prediction
@@ -414,7 +377,7 @@ class RandomForestLTRC(ClassifierMixin):
                  max_features: Union[float, int] = None,
                  max_depth: float = None,
                  bootstrap: bool = True,
-                 max_samples: float = 1,
+                 max_samples: float = 1.,
                  min_samples_leaf: int = None,
                  base_estimator: LTRCTrees = None,
                  ):
