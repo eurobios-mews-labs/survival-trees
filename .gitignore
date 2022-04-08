@@ -13,7 +13,7 @@ src/ex
 
 *cfg.cfg
 *save*
-*.git*  
+*.git*
 *.pkl
 .*
 backup/*
