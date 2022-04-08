@@ -96,4 +96,4 @@ def time_dependent_auc(
         censoring_time,
         sk_metrics.roc_auc_score,
         method)
-    return pd.DataFrame(result)
+    return pd.Series(result, name="method")

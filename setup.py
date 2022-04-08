@@ -4,13 +4,13 @@ from setuptools import setup
 
 r_packages = {
     "LTRCtrees": "https://cran.r-project.org/src/contrib/Archive/LTRCtrees/LTRCtrees_1.1.0.tar.gz",
-    "icens": "https://cran.r-project.org/src/contrib/Archive/Icens/Icens_1.24.0.tar.gz",
+    "Icens": "https://cran.r-project.org/src/contrib/Archive/Icens/Icens_1.24.0.tar.gz",
     "interval": "https://cran.r-project.org/src/contrib/interval_1.1-0.8.tar.gz"
     }
 
 r_packages_win = {
     "LTRCtrees": "https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/LTRCtrees_0.5.0.zip",
-    "icens": "https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/Icens_1.24.0.tar.gz",
+    "Icens": "https://cran.microsoft.com/snapshot/2017-08-01/bin/windows/contrib/3.4/Icens_1.24.0.tar.gz",
     "interval": "https://cran.r-project.org/bin/windows/contrib/4.2/interval_1.1-0.8.zip"
 }
 
