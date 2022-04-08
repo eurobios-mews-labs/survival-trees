@@ -28,18 +28,15 @@ def mean_concordance_index(temporal_score: pd.DataFrame, death: iter,
                              censoring_time).mean()
 
 
-def time_dependent_roc(
+def time_dependent_helper(
         temporal_score: pd.DataFrame,
         death: iter,
-        censoring_time=iter,
-        method="harrell"
+        censoring_time: iter,
+        function: callable,
+        method: str = "harrell",
+
 ):
-    """
-    method
-        - roc-cd : Cumulative sensitivity and dynamic specificity (C/D)
-        - roc-id : Incident sensitivity and dynamic specificity (I/D)
-    """
-    tdr = pd.Series(index=temporal_score.columns)
+    result = {}
 
     if method == "harrell":
         def outcome(_):
@@ -65,7 +62,7 @@ def time_dependent_roc(
     else:
         raise ValueError(f"method : {method} is not known")
 
-    for t in tdr.index:
+    for t in temporal_score.columns:
         try:
             y_true = np.array(outcome(t))
             y_score = np.array(marker(t))
@@ -73,10 +70,30 @@ def time_dependent_roc(
             nan_ = np.isnan(y_true)
             nan_ |= np.isnan(y_score)
 
-            tdr.loc[t] = sk_metrics.roc_auc_score(
-                y_true=y_true[~nan_],
-                y_score=y_score[~nan_]
+            result[t] = function(
+                y_true=outcome(t),
+                y_score=marker(t)
             )
         except ValueError:
             pass
-    return tdr
+    return result
+
+
+def time_dependent_auc(
+        temporal_score: pd.DataFrame,
+        death: iter,
+        censoring_time=iter,
+        method="harrell"
+):
+    """
+    method
+        - roc-cd : Cumulative sensitivity and dynamic specificity (C/D)
+        - roc-id : Incident sensitivity and dynamic specificity (I/D)
+    """
+    result = time_dependent_helper(
+        temporal_score,
+        death,
+        censoring_time,
+        sk_metrics.roc_auc_score,
+        method)
+    return pd.DataFrame(result)
