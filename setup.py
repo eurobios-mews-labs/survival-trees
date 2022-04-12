@@ -21,8 +21,10 @@ class PostInstall(install):
         import rpy2.robjects as ro
         r_session = ro.r
         install.run(self)
-        package_list = ["survival", "data.table",
-         "rpart", 'stringi', "hash"]
+        package_list = ["partykit", "inum", "icenReg", 
+                        "survival", "data.table",
+                        "interval", 
+                        "Formula", "rpart", 'stringi', "hash"]
         if len(package_list) == 1:
             package_list = f"('{package_list[0]}')"
         else:
