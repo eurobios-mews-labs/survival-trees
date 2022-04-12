@@ -23,7 +23,6 @@ class PostInstall(install):
         install.run(self)
         package_list = ["partykit", "inum", "icenReg", 
                         "survival", "data.table",
-                        "interval", 
                         "Formula", "rpart", 'stringi', "hash"]
         if len(package_list) == 1:
             package_list = f"('{package_list[0]}')"
@@ -53,7 +52,6 @@ class PostInstall(install):
                       install.packages('""" + v + """')
                     }"""
             r_session(r_cmd2)
-        # raise AssertionError("Passed")
 
 
 def parse_requirements(filename):
