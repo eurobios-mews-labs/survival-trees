@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from benchmark import synthetic
 from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, LTRCTreesFitter
 from survival_trees import plotting
-from survival_trees.metric import concordance_index, time_dependent_roc
+from survival_trees.metric import concordance_index, time_dependent_auc
 
 
 def load_datasets():
@@ -149,7 +149,7 @@ def test_metrics():
     plot.figure()
     for method in ["harrell", "roc-cd", "roc-id"]:
         test = model.predict(x_test).astype(float)
-        tdr = time_dependent_roc(1 - test, death=y_test["death"],
+        tdr = time_dependent_auc(1 - test, event_observed=y_test["death"],
                                  censoring_time=y_test["time"],
                                  method=method)
         tdr.dropna().plot(marker=".", label=method)
