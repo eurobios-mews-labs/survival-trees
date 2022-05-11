@@ -6,7 +6,7 @@ from survival_trees import metric
 from survival_trees import plotting
 
 
-def test_auc():
+def test_auc_():
     t1 = np.linspace(0, 1, num=100)
     t2 = np.linspace(1, 0, num=100)
     t3 = np.linspace(2, 0, num=100)
@@ -24,3 +24,22 @@ def test_auc():
     (metric.concordance_index(-data, target, time) + 0.01).plot(ax=ax[1], label="Concordance index", alpha=0.5)
     metric.time_dependent_auc(data, target, time, method="roc-id").plot(ax=ax[1], label="$AUC^{I, D}$", marker=".", lw=0, alpha=0.5)
     ax[1].legend(loc=4)
+
+
+def test_t_auc():
+    t1 = np.linspace(0, 1, num=3)
+    t2 = np.linspace(1, 0, num=3)
+    t3 = np.linspace(2, 0, num=3)
+    t4 = np.linspace(0, 2, num=3)
+
+    data = 1 - pd.DataFrame(np.array([t1, t2, t3, t4]))
+    target = np.array([0, 1, 1, 0])
+    time = np.array([2, 1, 2, 1])
+
+    harrel = metric.time_dependent_auc(data, target, time, method="harrell")
+    roc_cd = metric.time_dependent_auc(data, target, time, method="roc-cd")
+    roc_id = metric.time_dependent_auc(data, target, time, method="roc-id")
+
+    assert (np.array(harrel) == np.array((0, 0.5, 1))).all(),   "Error in Harrel index computation"
+    assert (np.array(roc_cd) == np.array((5/6, 1))).all(),      "Error in ROC CD computation"
+    assert (np.array(roc_id) == np.array((5/6, 5/6))).all(),    "Error in ROC CID  index computation"

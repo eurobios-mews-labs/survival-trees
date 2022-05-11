@@ -16,7 +16,7 @@ def tagged_curves(temporal_curves: pd.DataFrame, label: pd.DataFrame,
     neg_index = temp_curves.index[~label.astype(bool)]
     # check consistency
     if time_event is not None:
-        col_id = np.searchsorted(temp_curves.columns, time_event) - 1
+        col_id = np.searchsorted(temp_curves.columns, time_event, side="right") - 1
         col = temp_curves.columns[col_id]
         prob = np.diag(temp_curves[col])
         if add_marker:
