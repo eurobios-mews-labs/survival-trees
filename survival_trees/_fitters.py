@@ -117,6 +117,7 @@ class RandomForestLTRC(RF):
                  bootstrap: bool = True,
                  max_samples: float = 1,
                  min_samples_leaf: int = None,
+                 cp: float = None,
                  base_estimator: "LTRCTrees" = None,
                  ):
         super().__init__(n_estimators,
@@ -125,6 +126,7 @@ class RandomForestLTRC(RF):
                          bootstrap,
                          max_samples,
                          min_samples_leaf,
+                         cp,
                          base_estimator)
 
     def fit(self, data: pd.DataFrame, duration_col: str,

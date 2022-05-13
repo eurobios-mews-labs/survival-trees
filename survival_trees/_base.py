@@ -1,6 +1,4 @@
 import os
-import sys
-from pathlib import Path
 from typing import List
 from typing import Union
 
@@ -11,6 +9,7 @@ import rpy2.robjects.packages as rpackages
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
 from sklearn.base import BaseEstimator, ClassifierMixin
+
 from survival_trees.tools import execution
 
 path = os.path.abspath(__file__).replace(os.path.basename(__file__), "")
@@ -125,6 +124,9 @@ class LTRCTrees(REstimator, ClassifierMixin):
           `ceil(min_samples_leaf * n_samples)` are the minimum
           number of samples for each node.
 
+    cp: float, default=0.01
+        Complexity parameter
+
     Attributes
     ----------
 
@@ -166,7 +168,9 @@ class LTRCTrees(REstimator, ClassifierMixin):
             self, max_depth=None,
             min_samples_leaf=None,
             get_dense_prediction=True,
-            interpolate_prediction=True):
+            interpolate_prediction=True,
+            cp: float = None
+    ):
         super().__init__()
         import warnings
         with warnings.catch_warnings():
@@ -176,6 +180,7 @@ class LTRCTrees(REstimator, ClassifierMixin):
         self.interpolate_prediction = interpolate_prediction
         self.min_samples_leaf = min_samples_leaf
         self.max_depth = max_depth
+        self.cp = cp
         self.__hash = "id.run"
 
     def fit(self, X: pd.DataFrame, y: pd.DataFrame):
@@ -206,9 +211,11 @@ class LTRCTrees(REstimator, ClassifierMixin):
             self.feature_importances_ = [np.nan for _ in features]
 
     def __param_r_setter(self):
-        param = ""
+        param = "xval=2, "
         if self.min_samples_leaf is not None:
             param += "minbucket=%s, " % self.min_samples_leaf
+        if self.cp is not None:
+            param += "cp=%s, " % self.cp
         if self.max_depth is not None:
             param += "maxdepth=%s, " % self.max_depth
         if param == "":
@@ -324,6 +331,9 @@ class RandomForestLTRC(ClassifierMixin):
             - If float, then draw `max_samples * X.shape[0]` samples. Thus,
               `max_samples` should be in the interval `(0.0, 1.0]`.
 
+        cp : float, default=0.01
+            Complexity parameter.
+
         Attributes
         ----------
         base_estimator_ : LTRCTrees
@@ -379,6 +389,7 @@ class RandomForestLTRC(ClassifierMixin):
                  bootstrap: bool = True,
                  max_samples: float = 1.,
                  min_samples_leaf: int = None,
+                 cp: float = 0.01,
                  base_estimator: LTRCTrees = None,
                  ):
         self.__select_feature = {}
@@ -388,11 +399,13 @@ class RandomForestLTRC(ClassifierMixin):
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
+        self.cp = cp
         if base_estimator is None:
             self.base_estimator_ = LTRCTrees(
                 interpolate_prediction=False,
                 max_depth=self.max_depth,
-                min_samples_leaf=self.min_samples_leaf
+                min_samples_leaf=self.min_samples_leaf,
+                cp=self.cp
             )
         else:
             self.base_estimator_ = base_estimator

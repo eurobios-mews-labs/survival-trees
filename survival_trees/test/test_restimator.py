@@ -43,7 +43,7 @@ def test_random_forest_src(get_data):
 
 def test_ltrc_trees(get_data):
     x_train, x_test, y_train, y_test = get_data
-    est = LTRCTrees()
+    est = LTRCTrees(min_samples_leaf=1, cp=0.001)
 
     y_save = y_train.__deepcopy__()
     est.fit(x_train, y_train)
@@ -80,7 +80,7 @@ def test_ltrc_trees_n(get_data):
 def test_ltrc_trees_predict_curves(get_data):
     x_train, x_test, y_train, y_test = get_data
 
-    est = LTRCTrees()
+    est = LTRCTrees(cp=0.000001, min_samples_leaf=1)
     est.fit(x_train, y_train)
     curves, indexes = est.predict_curves(x_test)
     print(curves)
@@ -91,7 +91,7 @@ def test_ltrc_trees_predict_curves(get_data):
 def test_rf_ltrc(get_data):
     x_train, x_test, y_train, y_test = get_data
     est = RandomForestLTRC(
-        n_estimators=3)
+        n_estimators=3, cp=0.001)
     est.fit(x_train, y_train)
 
     test = est.predict(x_test)

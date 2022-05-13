@@ -65,7 +65,8 @@ def benchmark(n_exp=2):
     all_datasets = load_datasets()
     models = {
         "ltrc-forest": RandomForestLTRCFitter(
-            n_estimators=20,
+            n_estimators=30,
+            cp=0.01,
             min_samples_leaf=3,
             max_samples=0.8),
         "ltrc_trees": LTRCTreesFitter(),
@@ -91,7 +92,7 @@ def benchmark(n_exp=2):
                         x_test).astype(float).T
                     test = test.dropna()
                     c_index = concordance_index(
-                        test, death=y_test.loc[test.index].iloc[:, 2],
+                        test, event_observed=y_test.loc[test.index].iloc[:, 2],
                         censoring_time=y_test.loc[test.index].iloc[:, 1])
                     results[j].loc[k, key] = np.nanmean(c_index)
                 except Exception:
@@ -109,7 +110,7 @@ def benchmark(n_exp=2):
                 vmin=0.5,
                 # vmax=0.9,
                 cmap="RdBu")
-    # plot.savefig("./public/benchmark.png")
+    plot.savefig("./public/benchmark.png")
 
 
 def test_larynx():
@@ -169,4 +170,4 @@ def test_metrics():
 
 
 if __name__ == '__main__':
-    benchmark(n_exp=1)
+    benchmark(n_exp=10)

@@ -134,7 +134,7 @@ if __name__ == '__main__':
         test.columns = np.array(test.columns.astype(float))
         test = test.dropna()
         c_index = concordance_index(
-            test, death=y_test.loc[test.index].iloc[:, 2].astype(bool),
+            test, event_observed=y_test.loc[test.index].iloc[:, 2].astype(bool),
             censoring_time=y_test.loc[test.index].iloc[:, 1])
         print(models[key])
         print(c_index.mean())
