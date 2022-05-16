@@ -62,6 +62,10 @@ class RandomForestLTRC(RF):
             - If float, then draw `max_samples * X.shape[0]` samples. Thus,
               `max_samples` should be in the interval `(0.0, 1.0]`.
 
+        min_impurity_decrease: float, default=0.01
+            complexity parameter. Any split that does not decrease the overall
+            lack of fit by a factor of cp is not attempted
+
         Attributes
         ----------
         base_estimator_ : LTRCTrees
@@ -117,7 +121,7 @@ class RandomForestLTRC(RF):
                  bootstrap: bool = True,
                  max_samples: float = 1,
                  min_samples_leaf: int = None,
-                 cp: float = None,
+                 min_impurity_decrease: float = None,
                  base_estimator: "LTRCTrees" = None,
                  ):
         super().__init__(n_estimators,
@@ -126,7 +130,7 @@ class RandomForestLTRC(RF):
                          bootstrap,
                          max_samples,
                          min_samples_leaf,
-                         cp,
+                         min_impurity_decrease,
                          base_estimator)
 
     def fit(self, data: pd.DataFrame, duration_col: str,

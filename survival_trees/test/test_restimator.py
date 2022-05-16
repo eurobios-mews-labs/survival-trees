@@ -80,7 +80,7 @@ def test_ltrc_trees_n(get_data):
 def test_ltrc_trees_predict_curves(get_data):
     x_train, x_test, y_train, y_test = get_data
 
-    est = LTRCTrees(cp=0.000001, min_samples_leaf=1)
+    est = LTRCTrees(min_impurity_decrease=0.000001, min_samples_leaf=1)
     est.fit(x_train, y_train)
     curves, indexes = est.predict_curves(x_test)
     print(curves)
@@ -91,7 +91,7 @@ def test_ltrc_trees_predict_curves(get_data):
 def test_rf_ltrc(get_data):
     x_train, x_test, y_train, y_test = get_data
     est = RandomForestLTRC(
-        n_estimators=3, cp=0.001)
+        n_estimators=3, min_impurity_decrease=0.001)
     est.fit(x_train, y_train)
 
     test = est.predict(x_test)
@@ -118,6 +118,7 @@ def test_rf_ltrc_fast(get_data):
                            max_features=2,
                            bootstrap=True,
                            max_samples=0.5,
+                           min_samples_split=3,
                            )
 
     est.fit(x_train, y_train)
@@ -145,6 +146,7 @@ def test_rf_ltrc_fast_max_features(get_data):
                            max_features=0.5,
                            bootstrap=True,
                            max_samples=0.5,
+                           min_impurity_decrease=0.001
                            )
 
     est.fit(x_train, y_train)

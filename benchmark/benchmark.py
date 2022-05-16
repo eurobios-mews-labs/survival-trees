@@ -66,9 +66,9 @@ def benchmark(n_exp=2):
     models = {
         "ltrc-forest": RandomForestLTRCFitter(
             n_estimators=30,
-            cp=0.01,
+            cp=0.0000001,
             min_samples_leaf=3,
-            max_samples=0.8),
+            max_samples=0.89),
         "ltrc_trees": LTRCTreesFitter(),
         "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(),
         "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(penalizer=0.1),
@@ -145,7 +145,7 @@ def test_metrics():
     x_train, x_test, y_train, y_test = train_test_split(
         X, y, train_size=0.8)
     model = RandomForestLTRC(max_features=2, n_estimators=30,
-                             min_samples_leaf=4)
+                             min_samples_leaf=1, cp=0.000000001)
     model.fit(x_train, y_train)
     plot.figure()
     for method in ["harrell", "roc-cd", "roc-id"]:

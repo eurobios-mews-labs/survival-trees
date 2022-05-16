@@ -124,8 +124,11 @@ class LTRCTrees(REstimator, ClassifierMixin):
           `ceil(min_samples_leaf * n_samples)` are the minimum
           number of samples for each node.
 
-    cp: float, default=0.01
-        Complexity parameter
+    min_impurity_decrease: float, default=0.01
+        complexity parameter. Any split that does not decrease the overall
+        lack of fit by a factor of min_impurity_decrease is not attempted
+
+    min_samples_split: float, default=2
 
     Attributes
     ----------
@@ -169,7 +172,8 @@ class LTRCTrees(REstimator, ClassifierMixin):
             min_samples_leaf=None,
             get_dense_prediction=True,
             interpolate_prediction=True,
-            cp: float = None
+            min_impurity_decrease: float = None,
+            min_samples_split=None,
     ):
         super().__init__()
         import warnings
@@ -180,8 +184,9 @@ class LTRCTrees(REstimator, ClassifierMixin):
         self.interpolate_prediction = interpolate_prediction
         self.min_samples_leaf = min_samples_leaf
         self.max_depth = max_depth
-        self.cp = cp
+        self.min_impurity_decrease = min_impurity_decrease
         self.__hash = "id.run"
+        self.min_samples_split = min_samples_split
 
     def fit(self, X: pd.DataFrame, y: pd.DataFrame):
         _validate_y(y)
@@ -214,10 +219,12 @@ class LTRCTrees(REstimator, ClassifierMixin):
         param = "xval=2, "
         if self.min_samples_leaf is not None:
             param += "minbucket=%s, " % self.min_samples_leaf
-        if self.cp is not None:
-            param += "cp=%s, " % self.cp
+        if self.min_impurity_decrease is not None:
+            param += "cp=%s, " % self.min_impurity_decrease
         if self.max_depth is not None:
             param += "maxdepth=%s, " % self.max_depth
+        if self.min_samples_split is not None:
+            param += "minbucket=%s, " % self.min_samples_split
         if param == "":
             return ""
         else:
@@ -331,8 +338,11 @@ class RandomForestLTRC(ClassifierMixin):
             - If float, then draw `max_samples * X.shape[0]` samples. Thus,
               `max_samples` should be in the interval `(0.0, 1.0]`.
 
-        cp : float, default=0.01
-            Complexity parameter.
+        min_impurity_decrease: float, default=0.01
+            complexity parameter. Any split that does not decrease the overall
+            lack of fit by a factor of cp is not attempted
+
+        min_samples_split: float, default=2
 
         Attributes
         ----------
@@ -389,7 +399,8 @@ class RandomForestLTRC(ClassifierMixin):
                  bootstrap: bool = True,
                  max_samples: float = 1.,
                  min_samples_leaf: int = None,
-                 cp: float = 0.01,
+                 min_impurity_decrease: float = 0.01,
+                 min_samples_split: int = 2,
                  base_estimator: LTRCTrees = None,
                  ):
         self.__select_feature = {}
@@ -399,13 +410,15 @@ class RandomForestLTRC(ClassifierMixin):
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self.max_features = max_features
-        self.cp = cp
+        self.min_impurity_decrease = min_impurity_decrease
+        self.min_samples_split = min_samples_split
         if base_estimator is None:
             self.base_estimator_ = LTRCTrees(
                 interpolate_prediction=False,
                 max_depth=self.max_depth,
                 min_samples_leaf=self.min_samples_leaf,
-                cp=self.cp
+                min_impurity_decrease=self.min_impurity_decrease,
+                min_samples_split=self.min_samples_split
             )
         else:
             self.base_estimator_ = base_estimator
@@ -458,7 +471,7 @@ class RandomForestLTRC(ClassifierMixin):
 
         if isinstance(self.max_features, float):
             self.__m_features = int(
-                np.round(self.__m_features * len(features), 0))
+                np.round(self.max_features * len(features), 0))
         elif self.max_features is None:
             self.__m_features = len(features)
 
