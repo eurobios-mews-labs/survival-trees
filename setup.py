@@ -63,7 +63,7 @@ def parse_requirements(filename):
 install_req = parse_requirements("requirements.txt")
 
 setup(name='survival_trees',
-      version='0.0.9',
+      version='0.0.10',
       description='Python survival trees',
       url='https://gitlab.eurobios.com/vlaurent/survival-trees',
       author='Vincent LAURENT',

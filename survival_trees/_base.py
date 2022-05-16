@@ -224,7 +224,7 @@ class LTRCTrees(REstimator, ClassifierMixin):
         if self.max_depth is not None:
             param += "maxdepth=%s, " % self.max_depth
         if self.min_samples_split is not None:
-            param += "minbucket=%s, " % self.min_samples_split
+            param += "minsplit=%s, " % self.min_samples_split
         if param == "":
             return ""
         else:
