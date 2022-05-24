@@ -1,5 +1,6 @@
 from typing import Union
 
+import numpy as np
 import pandas as pd
 
 from survival_trees import LTRCTrees as LTRCT
@@ -160,9 +161,13 @@ class RandomForestLTRC(RF):
         y = data[[entry_col, duration_col, event_col]]
         return super().fit(X, y)
 
-    def predict_cumulative_hazard(self, X: pd.DataFrame, return_type="dense"
-                                  ) -> Union[pd.DataFrame, None]:
-        return 1 - self.predict(X, return_type).T
+    def predict_survival(self, X: pd.DataFrame, return_type="dense"
+                         ) -> Union[pd.DataFrame, None]:
+        return self.predict(X, return_type).T
+
+    def predict_cumulative_hazard(self, X: pd.DataFrame, return_type="dense"):
+        data = self.predict(X, return_type).T
+        return pd.DataFrame(-np.log(data), index=data.index, columns=data.columns)
 
 
 class LTRCTrees(LTRCT):
@@ -199,6 +204,9 @@ class LTRCTrees(LTRCT):
         y = data[[entry_col, duration_col, event_col]]
         return super().fit(X, y)
 
-    def predict_cumulative_hazard(self, X: pd.DataFrame,
-                                  ) -> Union[pd.DataFrame, None]:
-        return 1 - self.predict(X).T
+    def predict_survival(self, X: pd.DataFrame) -> Union[pd.DataFrame, None]:
+        return self.predict(X).T
+
+    def predict_cumulative_hazard(self, X: pd.DataFrame):
+        data = self.predict(X).T
+        return pd.DataFrame(-np.log(data), index=data.index, columns=data.columns)
