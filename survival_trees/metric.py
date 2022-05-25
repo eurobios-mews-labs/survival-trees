@@ -103,8 +103,8 @@ def time_dependent_helper(
             nan_ |= np.isnan(y_score)
 
             result[t] = function(
-                y_true=outcome(t),
-                y_score=marker(t)
+                y_true=y_true[~nan_],
+                y_score=y_score[~nan_]
             )
         except ValueError:
             pass
