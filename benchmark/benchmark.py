@@ -13,6 +13,10 @@ from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, 
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_auc
 
+import rpy2
+from rpy2 import robjects
+from rpy2.robjects import pandas2ri
+from rpy2.robjects.conversion import localconverter
 
 def load_datasets():
     datasets_dict = {}
@@ -21,43 +25,56 @@ def load_datasets():
     data["entry_date"] = 0
     y = data[["entry_date", "time", "death"]]
     X = data.drop(columns=y.columns.tolist())
-    datasets_dict["larynx"] = X, y
+    datasets_dict["Larynx Cancer"] = X, y
     # ==========================================================================
     data = datasets.load_dd()
     data["entry_date"] = 0
     y = data[["entry_date", "duration", "observed"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["dd"] = X, y
+    datasets_dict["Dictatorship"] = X, y
     # ==========================================================================
     data = datasets.load_lung()
     data["entry_date"] = 0
     y = data[["entry_date", "time", "status"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["lung"] = X, y
+    datasets_dict["Lung Cancer"] = X, y
     # ==========================================================================
     data = datasets.load_rossi()
     data["entry_date"] = 0
     y = data[["entry_date", "week", "arrest"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["rossi"] = X, y
+    datasets_dict["Convicts"] = X, y
     # ==========================================================================
     data = datasets.load_gbsg2()
     data["entry_date"] = 0
     y = data[["entry_date", "time", "cens"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["gbsg2"] = X, y
+    datasets_dict["Breast Cancer"] = X, y
     # ==========================================================================
     data = pd.concat((synthetic.X.astype(int), synthetic.Y, synthetic.L,
                       synthetic.R), axis=1)
     y = data[["left_truncation", "right_censoring", "target"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["mcGough_2021"] = X, y
+    datasets_dict["Syn. Gough 2021"] = X, y
 
+    # =========================================================================
+    robjects.r("library(survival)")
+    with localconverter(robjects.default_converter + pandas2ri.converter):
+        data = robjects.conversion.rpy2py(robjects.r("survival::flchain"))
+    data["sex"] = data["sex"] == "F"
+    y = pd.DataFrame(index=data.index)
+    data.loc[data["futime"] <= 0, "futime"] = 0.5
+    y["time"] = data["futime"]/365.25 + data["age"]
+    y["death"] = data["death"]
+    y["entry_point"] = data["age"]
+    y = y[["entry_point", "time", "death"]]
+    X = data[["sex", "kappa", "lambda", "creatinine", "mgus"]]
+    datasets_dict["FLC immune dis."] = X, y
     return datasets_dict
 
 
