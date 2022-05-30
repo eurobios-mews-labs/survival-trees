@@ -66,13 +66,14 @@ def load_datasets():
     robjects.r("library(survival)")
     with localconverter(robjects.default_converter + pandas2ri.converter):
         data = robjects.conversion.rpy2py(robjects.r("survival::flchain"))
-    data["sex"] = data["sex"] == "F"
+    data["sex"] = (data["sex"] == "F").astype(int)
     y = pd.DataFrame(index=data.index)
     data.loc[data["futime"] <= 0, "futime"] = 0.5
     y["time"] = data["futime"]/365.25 + data["age"]
     y["death"] = data["death"]
     y["entry_point"] = data["age"]
     y = y[["entry_point", "time", "death"]]
+    y['death'] = y["death"].astype(int)
     X = data[["sex", "kappa", "lambda", "creatinine", "mgus"]]
     datasets_dict["FLC immune dis."] = X, y
     return datasets_dict
@@ -83,7 +84,7 @@ def benchmark(n_exp=2):
     models = {
         "ltrc-forest": RandomForestLTRCFitter(
             n_estimators=30,
-            cp=0.0000001,
+            min_impurity_decrease=0.0000001,
             min_samples_leaf=3,
             max_samples=0.89),
         "ltrc_trees": LTRCTreesFitter(),
@@ -105,8 +106,8 @@ def benchmark(n_exp=2):
                         duration_col=y_train.columns[1],
                         event_col=y_train.columns[2]
                     )
-                    test = 1 - models[key].predict_cumulative_hazard(
-                        x_test).astype(float).T
+                    test = - np.log(models[key].predict_cumulative_hazard(
+                        x_test).astype(float)).T
                     test = test.dropna()
                     c_index = concordance_index(
                         test, event_observed=y_test.loc[test.index].iloc[:, 2],
@@ -127,6 +128,7 @@ def benchmark(n_exp=2):
                 vmin=0.5,
                 # vmax=0.9,
                 cmap="RdBu")
+    plot.tight_layout()
     plot.savefig("./public/benchmark.png")
 
 
@@ -187,4 +189,4 @@ def test_metrics():
 
 
 if __name__ == '__main__':
-    benchmark(n_exp=10)
+    benchmark(n_exp=2)
