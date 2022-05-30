@@ -18,8 +18,8 @@ def tagged_curves(temporal_curves: pd.DataFrame, label: pd.DataFrame,
     if time_event is not None:
         col_id = np.searchsorted(temp_curves.columns, time_event, side="right") - 1
         col = temp_curves.columns[col_id]
-        prob = np.diag(temp_curves[col])
         if add_marker:
+            prob = np.diag(temp_curves[col])
             plot.scatter(col[label.astype(bool)], prob[label.astype(bool)],
                          marker="*",
                          c=event_observed_color)
