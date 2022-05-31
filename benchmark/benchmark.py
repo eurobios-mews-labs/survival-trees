@@ -17,6 +17,8 @@ import rpy2
 from rpy2 import robjects
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
+plot.rc('text', usetex=True)
+plot.rc('font', family='serif')
 
 def load_datasets():
     datasets_dict = {}
@@ -27,13 +29,6 @@ def load_datasets():
     X = data.drop(columns=y.columns.tolist())
     datasets_dict["Larynx Cancer"] = X, y
     # ==========================================================================
-    data = datasets.load_dd()
-    data["entry_date"] = 0
-    y = data[["entry_date", "duration", "observed"]]
-    X = data.drop(columns=y.columns.tolist())
-    X = X.select_dtypes(include=np.number)
-    datasets_dict["Dictatorship"] = X, y
-    # ==========================================================================
     data = datasets.load_lung()
     data["entry_date"] = 0
     y = data[["entry_date", "time", "status"]]
@@ -41,27 +36,12 @@ def load_datasets():
     X = X.select_dtypes(include=np.number)
     datasets_dict["Lung Cancer"] = X, y
     # ==========================================================================
-    data = datasets.load_rossi()
-    data["entry_date"] = 0
-    y = data[["entry_date", "week", "arrest"]]
-    X = data.drop(columns=y.columns.tolist())
-    X = X.select_dtypes(include=np.number)
-    datasets_dict["Convicts"] = X, y
-    # ==========================================================================
     data = datasets.load_gbsg2()
     data["entry_date"] = 0
     y = data[["entry_date", "time", "cens"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
     datasets_dict["Breast Cancer"] = X, y
-    # ==========================================================================
-    data = pd.concat((synthetic.X.astype(int), synthetic.Y, synthetic.L,
-                      synthetic.R), axis=1)
-    y = data[["left_truncation", "right_censoring", "target"]]
-    X = data.drop(columns=y.columns.tolist())
-    X = X.select_dtypes(include=np.number)
-    datasets_dict["Syn. Gough 2021"] = X, y
-
     # =========================================================================
     robjects.r("library(survival)")
     with localconverter(robjects.default_converter + pandas2ri.converter):
@@ -76,6 +56,27 @@ def load_datasets():
     y['death'] = y["death"].astype(int)
     X = data[["sex", "kappa", "lambda", "creatinine", "mgus"]]
     datasets_dict["FLC immune dis."] = X, y
+    # ==========================================================================
+    data = datasets.load_dd()
+    data["entry_date"] = 0
+    y = data[["entry_date", "duration", "observed"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["Dictatorship"] = X, y
+    # ==========================================================================
+    data = datasets.load_rossi()
+    data["entry_date"] = 0
+    y = data[["entry_date", "week", "arrest"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["Convicts"] = X, y
+    # ==========================================================================
+    data = pd.concat((synthetic.X.astype(int), synthetic.Y, synthetic.L,
+                      synthetic.R), axis=1)
+    y = data[["left_truncation", "right_censoring", "target"]]
+    X = data.drop(columns=y.columns.tolist())
+    X = X.select_dtypes(include=np.number)
+    datasets_dict["Syn. Gough 2021"] = X, y
     return datasets_dict
 
 
@@ -109,8 +110,8 @@ def benchmark(n_exp=2):
                     test = - np.log(models[key].predict_cumulative_hazard(
                         x_test).astype(float)).T
                     test = test.dropna()
-                    c_index = concordance_index(
-                        test, event_observed=y_test.loc[test.index].iloc[:, 2],
+                    c_index = time_dependent_auc(
+                        - test, event_observed=y_test.loc[test.index].iloc[:, 2],
                         censoring_time=y_test.loc[test.index].iloc[:, 1])
                     results[j].loc[k, key] = np.nanmean(c_index)
                 except Exception:
@@ -122,14 +123,8 @@ def benchmark(n_exp=2):
     all_res.index.name = "dataset"
     mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
     std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
+    return mean_, std_
 
-    f, ax = plot.subplots(figsize=(9, 6))
-    sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
-                vmin=0.5,
-                # vmax=0.9,
-                cmap="RdBu")
-    plot.tight_layout()
-    plot.savefig("./public/benchmark.png")
 
 
 def test_larynx():
@@ -189,4 +184,18 @@ def test_metrics():
 
 
 if __name__ == '__main__':
-    benchmark(n_exp=2)
+    data_names = list(load_datasets().keys())
+    mean_, _ = benchmark(n_exp=10)
+    mean_.to_csv("benchmark/benchmark.csv")
+
+    mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
+    mean_ = mean_.loc[data_names]
+    f, ax = plot.subplots(figsize=(7, 6), dpi=250)
+    sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
+                vmin=0.5,
+                # vmax=0.9,
+                cmap="flare_r")
+
+    plot.ylabel("")
+    plot.tight_layout()
+    plot.savefig("./public/benchmark.png")
