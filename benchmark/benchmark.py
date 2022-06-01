@@ -190,13 +190,21 @@ if __name__ == '__main__':
 
     mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
     mean_ = mean_.loc[data_names]
-    f, ax = plot.subplots(figsize=(7, 6), dpi=300)
+    f, ax = plot.subplots(figsize=(5, 5), dpi=300)
     sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
                 vmin=0.5,
                 # vmax=0.9,
                 cmap="rocket_r"
                 )
-    plot.xticks(rotation=10)
+    plot.xticks(rotation=0)
+    import textwrap
+
+    f = lambda x: textwrap.fill(x.get_text(), 12)
+    ax.set_yticklabels(map(f, ax.get_yticklabels()))
+
+    f = lambda x: textwrap.fill(x.get_text(), 15)
+    ax.set_xticklabels(map(f, ax.get_xticklabels()))
+
     plot.ylabel("")
     plot.tight_layout()
     plot.savefig("./public/benchmark.png")
