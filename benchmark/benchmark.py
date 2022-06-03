@@ -20,24 +20,28 @@ from rpy2.robjects.conversion import localconverter
 plot.rc('text', usetex=True)
 plot.rc('font', family='serif')
 
+
 def load_datasets():
     datasets_dict = {}
     # ==========================================================================
     data = datasets.load_larynx()
-    data["entry_date"] = 0
+    data["entry_date"] = data["age"] * 365.25
+    data["time"] += data["entry_date"]
     y = data[["entry_date", "time", "death"]]
     X = data.drop(columns=y.columns.tolist())
     datasets_dict["Larynx Cancer"] = X, y
     # ==========================================================================
     data = datasets.load_lung()
-    data["entry_date"] = 0
+    data["entry_date"] = data["age"] * 365.25
+    data["time"] += data["entry_date"]
     y = data[["entry_date", "time", "status"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
     datasets_dict["Lung Cancer"] = X, y
     # ==========================================================================
     data = datasets.load_gbsg2()
-    data["entry_date"] = 0
+    data["entry_date"] = data["age"] * 365.25
+    data["time"] += data["entry_date"]
     y = data[["entry_date", "time", "cens"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
@@ -121,8 +125,8 @@ def benchmark(n_exp=2):
         results[res]["num_expe"] = res
         all_res = pd.concat((results[res].astype(float), all_res), axis=0)
     all_res.index.name = "dataset"
-    mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
-    std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
+    mean_ = all_res.reset_index().groupby("dataset").mean(skipna=True).drop(columns=["num_expe"])
+    std_ = all_res.reset_index().groupby("dataset").std(skipna=True).drop(columns=["num_expe"])
     return mean_, std_
 
 
@@ -190,7 +194,7 @@ if __name__ == '__main__':
 
     mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
     mean_ = mean_.loc[data_names]
-    f, ax = plot.subplots(figsize=(5, 5), dpi=300)
+    f, ax = plot.subplots(figsize=(5, 2.6), dpi=300)
     sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
                 vmin=0.5,
                 # vmax=0.9,
