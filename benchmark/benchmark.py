@@ -185,8 +185,8 @@ def test_metrics():
 
 if __name__ == '__main__':
     data_names = list(load_datasets().keys())
-    mean_, _ = benchmark(n_exp=10)
-    mean_.to_csv("benchmark/benchmark.csv")
+    # mean_, _ = benchmark(n_exp=10)
+    # mean_.to_csv("benchmark/benchmark.csv")
 
     mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
     mean_ = mean_.loc[data_names]
