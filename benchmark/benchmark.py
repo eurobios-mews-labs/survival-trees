@@ -59,14 +59,14 @@ def load_datasets():
     y = y[["entry_point", "time", "death"]]
     y['death'] = y["death"].astype(int)
     X = data[["sex", "kappa", "lambda", "creatinine", "mgus"]]
-    datasets_dict["FLC immune dis."] = X, y
+    datasets_dict["FLC chain"] = X, y
     # ==========================================================================
     data = datasets.load_dd()
     data["entry_date"] = 0
     y = data[["entry_date", "duration", "observed"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["Dictatorship"] = X, y
+    datasets_dict["Dictatorship & Democracy"] = X, y
     # ==========================================================================
     data = datasets.load_rossi()
     data["entry_date"] = 0
@@ -80,7 +80,7 @@ def load_datasets():
     y = data[["left_truncation", "right_censoring", "target"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["Syn. Gough 2021"] = X, y
+    datasets_dict["Synthetic data"] = X, y
     return datasets_dict
 
 
@@ -92,7 +92,7 @@ def benchmark(n_exp=2):
             min_impurity_decrease=0.0000001,
             min_samples_leaf=3,
             max_samples=0.89),
-        "ltrc_trees": LTRCTreesFitter(),
+        "ltrc-trees": LTRCTreesFitter(),
         "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(),
         "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(penalizer=0.1),
     }
@@ -125,10 +125,10 @@ def benchmark(n_exp=2):
         results[res]["num_expe"] = res
         all_res = pd.concat((results[res].astype(float), all_res), axis=0)
     all_res.index.name = "dataset"
+    all_res.to_csv("benchmark/benchmark_data.csv")
     mean_ = all_res.reset_index().groupby("dataset").mean(skipna=True).drop(columns=["num_expe"])
     std_ = all_res.reset_index().groupby("dataset").std(skipna=True).drop(columns=["num_expe"])
     return mean_, std_
-
 
 
 def test_larynx():
@@ -189,8 +189,8 @@ def test_metrics():
 
 if __name__ == '__main__':
     data_names = list(load_datasets().keys())
-    # mean_, _ = benchmark(n_exp=10)
-    # mean_.to_csv("benchmark/benchmark.csv")
+    mean_, _ = benchmark(n_exp=20)
+    mean_.to_csv("benchmark/benchmark.csv")
 
     mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
     mean_ = mean_.loc[data_names]
