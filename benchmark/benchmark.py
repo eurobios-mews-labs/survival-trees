@@ -25,7 +25,7 @@ def load_datasets():
     datasets_dict = {}
     # ==========================================================================
     data = datasets.load_larynx()
-    data["entry_date"] = data["age"] * 365.25
+    data["entry_date"] = data["age"]
     data["time"] += data["entry_date"]
     y = data[["entry_date", "time", "death"]]
     X = data.drop(columns=y.columns.tolist())
@@ -66,7 +66,7 @@ def load_datasets():
     y = data[["entry_date", "duration", "observed"]]
     X = data.drop(columns=y.columns.tolist())
     X = X.select_dtypes(include=np.number)
-    datasets_dict["Dictatorship & Democracy"] = X, y
+    datasets_dict["Dictatorship \& Democracy"] = X, y
     # ==========================================================================
     data = datasets.load_rossi()
     data["entry_date"] = 0
@@ -92,8 +92,8 @@ def benchmark(n_exp=2):
             min_impurity_decrease=0.0000001,
             min_samples_leaf=3,
             max_samples=0.89),
-        "ltrc-trees": LTRCTreesFitter(),
-        "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(),
+        "ltrc-trees": LTRCTreesFitter(min_samples_leaf=5),
+        "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(penalizer=0.1),
         "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(penalizer=0.1),
     }
     results = {}
@@ -101,9 +101,9 @@ def benchmark(n_exp=2):
         results[j] = pd.DataFrame(index=all_datasets.keys(), columns=models.keys())
         for k, (X, y) in all_datasets.items():
             x_train, x_test, y_train, y_test = train_test_split(
-                X, y, train_size=0.6)
+                X, y, train_size=0.7)
             for i, key in enumerate(models.keys()):
-
+                pass
                 try:
                     models[key].fit(
                         pd.concat((x_train, y_train), axis=1).dropna(),
@@ -126,8 +126,8 @@ def benchmark(n_exp=2):
         all_res = pd.concat((results[res].astype(float), all_res), axis=0)
     all_res.index.name = "dataset"
     all_res.to_csv("benchmark/benchmark_data.csv")
-    mean_ = all_res.reset_index().groupby("dataset").mean(skipna=True).drop(columns=["num_expe"])
-    std_ = all_res.reset_index().groupby("dataset").std(skipna=True).drop(columns=["num_expe"])
+    mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
+    std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
     return mean_, std_
 
 
@@ -192,7 +192,10 @@ if __name__ == '__main__':
     mean_, _ = benchmark(n_exp=20)
     mean_.to_csv("benchmark/benchmark.csv")
 
-    mean_ = pd.read_csv("benchmark/benchmark.csv", index_col="dataset")
+    all_res = pd.read_csv("benchmark/benchmark_data.csv", index_col="dataset")
+    mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
+    std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
+
     mean_ = mean_.loc[data_names]
     f, ax = plot.subplots(figsize=(5, 2.6), dpi=300)
     sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
