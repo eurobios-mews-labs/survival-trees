@@ -1,6 +1,14 @@
 # Machine learning algorithm for survival analysis
 
-## LTRC trees and LTRC Random Forest
+
+### Install notice
+
+To install the package you can run
+
+```shell
+python -m pip install git+https://github.com/eurobios-scb/survival-trees.git
+```
+
 
 ### Usage
 
@@ -64,12 +72,6 @@ then for each instance $i$ its contribution to the residual deviance $d_i = 2\le
 ## Benchmark
 
 ![benchmark](public/benchmark.png)
-
-## Install notice
-
-To install the package you can run
-
-    python -m pip install git+https://gitlab.eurobios.com/vlaurent/survival-trees
 
 ## References
 
