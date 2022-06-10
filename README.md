@@ -2,24 +2,21 @@
 
 ## LTRC trees and LTRC Random Forest
 
-**LTRC - trees** Based on partykit and Rpart algorithm (conditional inference) \cite{hothorn2006unbiased} \newline
+**LTRC - trees** Based on partykit and Rpart algorithm (conditional inference) 
 
 
 **Splitting method -- log rank test**
 
-Denote $`D_i, L_i, \delta_i`$ respectively the survival/censored time, the left truncation time and the event indicator, then for each instance $`i`$ its contribution to the logrank test score is
-
-- $`U_i = 1 + \log(R_i) - \log(L_i)`$ if  $`\delta_i = 1`$  and
-- $`U_i = \log(R_i) - \log(L_i)`$   if $`\delta_i = 0`$
+Denote (D, R, d) respectively the survival/censored time, the left truncation time and the event indicator, then for each 
+instance i its contribution to the residual deviance
 
 
 **Extension to LTRC - forest**
 
 
-- build $`n`$ independent LTRC-trees $`\tau_j`$
-- Bootstrap procedure
+- build m independent LTRCART using bootstrap procedure
 - Random feature selection layer
-- Compute the average estimation $`\hat{s}(t, \textbf{x}) = 1/n\sum_{j \leqslant n} \tau_j(t, \textbf{x})`$
+- Compute the average estimation $\hat{s}(t, \textbf{x}) = 1/n\sum_{j \leqslant n} \tau_j(t, \textbf{x})$
 
 
 
