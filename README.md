@@ -53,9 +53,7 @@ auc_cd = time_dependent_auc(
 **Splitting method -- log rank test**
 
 Denote $(D_i, R_i, \delta_i)$ respectively the survival/censored time, the left truncation time and the event indicator,
-then for each instance $i$ its contribution to the residual deviance $d_i = 2
-\left[\delta_i \log \left( \dfrac{\delta_i}{(\hat{\Lambda}_0(R_i) - \hat{\Lambda}_0(L_i)) \hat{\theta}} \right) - \left(\delta_i - (\hat{\Lambda}_0(R_i) - \hat{\Lambda}_0(L_i))\hat{\theta} \right) \right]
-$ with $\hat{\theta} = \sum \delta_i / \sum (\Lambda_0(R_i) - \Lambda_0(L_i))$
+then for each instance $i$ its contribution to the residual deviance $d_i = 2\left[\delta_i \log \left( \dfrac{\delta_i}{(\hat{\Lambda}_0(R_i) - \hat{\Lambda}_0(L_i)) \hat{\theta}} \right) - \left(\delta_i - (\hat{\Lambda}_0(R_i) - \hat{\Lambda}_0(L_i))\hat{\theta} \right) \right]$ with $\hat{\theta} = \sum \delta_i / \sum (\Lambda_0(R_i) - \Lambda_0(L_i))$
 
 **Extension to LTRC - forest**
 
