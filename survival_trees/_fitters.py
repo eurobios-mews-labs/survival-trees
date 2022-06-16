@@ -173,10 +173,14 @@ class RandomForestLTRC(RF):
 class LTRCTrees(LTRCT):
     def __init__(self,
                  max_depth: int = None,
-                 min_samples_leaf: int = None
+                 min_samples_leaf: int = None,
+                 min_impurity_decrease: float = None,
+                 min_samples_split: float = None
                  ):
-        super().__init__(max_depth,
-                         min_samples_leaf,
+        super().__init__(max_depth=max_depth,
+                         min_samples_leaf=min_samples_leaf,
+                         min_impurity_decrease=min_impurity_decrease,
+                         min_samples_split=min_samples_split
                          )
 
     def fit(self, data: pd.DataFrame, duration_col: str,

@@ -39,12 +39,19 @@ def load_datasets():
     X = X.select_dtypes(include=np.number)
     datasets_dict["Lung Cancer"] = X, y
     # ==========================================================================
-    data = datasets.load_gbsg2()
-    data["entry_date"] = data["age"] * 365.25
+    data = datasets.load_gbsg2().dropna()
+    data["death"] = 1 - data["cens"]
+    data = data.drop(columns='cens', axis=1)
+    data["entry_date"] = data["age"]
+    data["time"] /= 365.25
     data["time"] += data["entry_date"]
-    y = data[["entry_date", "time", "cens"]]
+
+    data["horTh"] = data["horTh"] == "yes"
+    data["menostat"] = data["menostat"] == "Post"
+    data["tgrade"] = data["tgrade"] == "III"
+    y = data[["entry_date", "time", "death"]].copy()
     X = data.drop(columns=y.columns.tolist())
-    X = X.select_dtypes(include=np.number)
+    X = X.astype(float).select_dtypes(include=np.number)
     datasets_dict["Breast Cancer"] = X, y
     # =========================================================================
     robjects.r("library(survival)")
@@ -92,7 +99,7 @@ def benchmark(n_exp=2):
             min_impurity_decrease=0.0000001,
             min_samples_leaf=3,
             max_samples=0.89),
-        "ltrc-trees": LTRCTreesFitter(min_samples_leaf=5),
+        "ltrc-trees": LTRCTreesFitter(min_samples_leaf=3, min_impurity_decrease=0.00000001),
         "cox-semi-parametric": coxph_fitter.SemiParametricPHFitter(penalizer=0.1),
         "aft-log-logistic": log_logistic_aft_fitter.LogLogisticAFTFitter(penalizer=0.1),
     }
@@ -185,6 +192,12 @@ def test_metrics():
                            time_event=y_test["time"],
                            add_marker=False)
     # plot.savefig("benchmark/curves.png", dpi=200)
+
+
+def properties():
+    data = load_datasets()
+    for k, (X, y) in data.items():
+        print(X.shape)
 
 
 if __name__ == '__main__':
