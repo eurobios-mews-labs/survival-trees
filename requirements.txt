@@ -2,3 +2,5 @@ lifelines
 rpy2
 memory_profiler
 sklearn
+pyqt5
+plotly==5.10
