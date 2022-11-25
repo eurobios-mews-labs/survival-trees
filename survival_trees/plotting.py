@@ -59,22 +59,21 @@ def _prepare_data(duration,
     # check consistency
     if time_event is not None:
         col_id = np.searchsorted(temp_curves.columns, time_event) - 1
-        col = temp_curves.columns[col_id]
-        prob = np.diag(temp_curves[col])
 
         outdated = pd.DataFrame(np.nan, index=temp_curves.index,
                                 columns=temp_curves.columns)
-        for i, ind in enumerate(temp_curves.index):
-            data = temp_curves.loc[ind]
-            outdated.loc[ind, dates[col_id[i]:]] = data[dates[col_id[i]:]]
-            temp_curves.loc[ind, dates[col_id[i] + 1:]] = np.nan
-    temp_curves["observed"] = True
-    outdated["observed"] = False
-    data = pd.concat((temp_curves, outdated), axis=0)
+        for c in np.unique(col_id):
+            ind = col_id == c
+            data = temp_curves[ind]
+            outdated.loc[ind, dates[c:]] = data[dates[c:]]
+            temp_curves.loc[ind, dates[c + 1:]] = np.nan
+        temp_curves["observed"] = True
+        outdated["observed"] = False
+        data = pd.concat((temp_curves, outdated), axis=0)
 
-    data["observed event"] = False
-    data.loc[pos_index, "observed event"] = True
-    return data
+        data["observed event"] = False
+        data.loc[pos_index, "observed event"] = True
+        return data
 
 
 def auc_vs_score_plotly(
@@ -180,7 +179,12 @@ def auc_vs_score_plotly(
     return fig
 
 
-def plot_roc_curve_plotly(roc: dict, colormap="magma_r", template=default_plotly_template):
+def plot_roc_curve_plotly(
+        roc: dict,
+        colormap: str = "magma_r",
+        template: str = default_plotly_template,
+        marker_size: int = 10,
+):
     import plotly.graph_objects as go
     import matplotlib
     max_, min_ = max(roc.keys()), min(roc.keys())
@@ -193,7 +197,7 @@ def plot_roc_curve_plotly(roc: dict, colormap="magma_r", template=default_plotly
             x=fpr, y=tpr,
             line={"color": c},
             mode="lines+markers",
-            marker={'color': c, 'size': 10},
+            marker={'color': c, 'size': marker_size},
             name=f"ROC(t={t})"
         )
         trace_line["showlegend"] = (i % 4) == 0
