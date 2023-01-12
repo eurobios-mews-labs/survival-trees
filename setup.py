@@ -76,5 +76,4 @@ setup(name='survival_trees',
                    },
       include_package_data=True,
       package_data={'survival_trees': ['*.R']},
-      cmdclass=dict(install=PostInstall),
       zip_safe=False)

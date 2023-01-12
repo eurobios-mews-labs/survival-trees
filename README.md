@@ -1,5 +1,6 @@
 # Machine learning algorithm for survival analysis
 
+<img src="https://img.shields.io/github/languages/code-size/eurobios-scb/survival-trees" alt="Alternative text" />
 
 ### Install notice
 

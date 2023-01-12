@@ -1,6 +1,8 @@
 /__init__.py
 .idea
 *.html
+*.txt
+*.csv
 
 *__pycache__*
 *checkpoint*

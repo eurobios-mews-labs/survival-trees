@@ -1,4 +1,3 @@
-#
 import matplotlib.pyplot as plot
 import numpy as np
 import pandas as pd
@@ -8,7 +7,7 @@ from lifelines.fitters import coxph_fitter, log_logistic_aft_fitter
 from lifelines.plotting import plot_lifetimes
 from sklearn.model_selection import train_test_split
 
-from benchmark import synthetic
+from survival_trees.benchmark import synthetic
 from survival_trees import LTRCTrees, RandomForestLTRCFitter, RandomForestLTRC, LTRCTreesFitter
 from survival_trees import plotting
 from survival_trees.metric import concordance_index, time_dependent_auc
@@ -17,8 +16,7 @@ import rpy2
 from rpy2 import robjects
 from rpy2.robjects import pandas2ri
 from rpy2.robjects.conversion import localconverter
-plot.rc('text', usetex=True)
-plot.rc('font', family='serif')
+plot.rc('font', family='ubuntu')
 
 
 def load_datasets():
@@ -170,7 +168,8 @@ def test_metrics():
     x_train, x_test, y_train, y_test = train_test_split(
         X, y, train_size=0.8)
     model = RandomForestLTRC(max_features=2, n_estimators=30,
-                             min_samples_leaf=1, cp=0.000000001)
+                             min_samples_leaf=1,
+                             cp=0.000000001)
     model.fit(x_train, y_train)
     plot.figure()
     for method in ["harrell", "roc-cd", "roc-id"]:
@@ -200,17 +199,21 @@ def properties():
         print(X.shape)
 
 
-if __name__ == '__main__':
-    data_names = list(load_datasets().keys())
-    mean_, _ = benchmark(n_exp=20)
-    mean_.to_csv("benchmark/benchmark.csv")
 
-    all_res = pd.read_csv("benchmark/benchmark_data.csv", index_col="dataset")
+
+if __name__ == '__main__':
+    datasets_dict = load_datasets()
+    data_names = list(datasets_dict.keys())
+    # mean_, _ = benchmark(n_exp=20)
+    # mean_.to_csv("benchmark/benchmark.csv")
+
+    all_res = pd.read_csv("survival_trees/benchmark/benchmark_data.csv", index_col="dataset")
     mean_ = all_res.reset_index().groupby("dataset").mean().drop(columns=["num_expe"])
     std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
 
     mean_ = mean_.loc[data_names]
-    f, ax = plot.subplots(figsize=(5, 2.6), dpi=300)
+    mean_.index = [e.replace("\&", "&") for e in mean_.index]
+    f, ax = plot.subplots(figsize=(4.6, 2.6), dpi=300)
     sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
                 vmin=0.5,
                 # vmax=0.9,
@@ -228,3 +231,9 @@ if __name__ == '__main__':
     plot.ylabel("")
     plot.tight_layout()
     plot.savefig("./public/benchmark.png")
+
+
+    for k, data_ in datasets_dict.items():
+        X, y = data_
+        y.columns = ["entry_date", "time", "death"]
+        pd.concat((X, y), axis=1).iloc[:600].to_csv(f"survival_trees/benchmark/data/{k}.txt", index=False)
