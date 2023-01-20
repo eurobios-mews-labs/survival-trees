@@ -135,6 +135,19 @@ def benchmark(n_exp=2):
     std_ = all_res.reset_index().groupby("dataset").std().drop(columns=["num_expe"])
     return mean_, std_
 
+def test_flc_chain():
+    X, y = load_datasets()["FLC chain"]
+    model = RandomForestLTRC(max_features=4, n_estimators=30,
+                             min_samples_leaf=1,
+                             )
+    import time
+    tic = time.time()
+    model.fit(X, y)
+    toc = time.time()
+    print(toc - tic)
+
+    model.predict(X)
+
 
 def test_larynx():
     data = datasets.load_larynx()
@@ -213,6 +226,9 @@ if __name__ == '__main__':
 
     mean_ = mean_.loc[data_names]
     mean_.index = [e.replace("\&", "&") for e in mean_.index]
+    mean_.columns = [e.replace("trees", "cart") for e in mean_.columns]
+
+
     f, ax = plot.subplots(figsize=(4.6, 2.6), dpi=300)
     sns.heatmap(mean_.astype(float), annot=True, linewidths=2, ax=ax,
                 vmin=0.5,
