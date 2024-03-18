@@ -1,6 +1,6 @@
 lifelines
 rpy2
 memory_profiler
-sklearn
+scikit-learn
 pyqt5
 plotly==5.10
