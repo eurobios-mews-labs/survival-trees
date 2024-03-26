@@ -1,13 +1,18 @@
 # LTRC Survival Forest
 
-<img src="https://img.shields.io/github/languages/code-size/eurobios-scb/survival-trees" alt="Alternative text" />
+<img src="https://img.shields.io/github/languages/code-size/eurobios-mews-labs/survival-trees" alt="Alternative text" />
 
 ### Install notice
 
-To install the package you can run
-
+To install this package, you will need to have the `R` compiler installed.
+On Ubuntu/Debian, it can usually be done with
 ```shell
-python -m pip install git+https://github.com/eurobios-scb/survival-trees.git
+sudo apt install r-base
+```
+
+Then, you can run the following command:
+```shell
+python -m pip install git+https://github.com/eurobios-mews-labs/survival-trees.git
 ```
 
 
@@ -63,10 +68,6 @@ auc_cd = time_dependent_auc(
 ## References
 
 * https://academic.oup.com/biostatistics/article/18/2/352/2739324
-
-## Requirements
-
-Having `R` compiler installed
 
 ## Project
 
