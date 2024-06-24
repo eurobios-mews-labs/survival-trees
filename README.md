@@ -7,7 +7,7 @@
 To install the package you can run
 
 ```shell
-python -m pip install git+https://github.com/eurobios-scb/survival-trees.git
+python -m pip install git+https://eurobios-mews-labs/survival-trees.git
 ```
 
 
